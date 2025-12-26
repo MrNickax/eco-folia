@@ -12,10 +12,18 @@ class MultiverseInventoriesIntegration(
 ): Listener {
     @EventHandler
     fun onWorldChange(event: WorldChangeShareHandlingEvent) {
-        val before = event.player.inventory.armorContents.toMutableList()
-        this.plugin.scheduler.run {
-            val after = event.player.inventory.armorContents.toMutableList()
-            Bukkit.getPluginManager().callEvent(ArmorChangeEvent(event.player, before, after))
-        }
+        val player = event.player
+        if (!player.isConnected) return
+
+        val before = player.inventory.armorContents.toMutableList()
+
+        player.scheduler.run(
+            plugin,
+            {
+                val after = player.inventory.armorContents.toMutableList()
+                Bukkit.getPluginManager().callEvent(ArmorChangeEvent(event.player, before, after))
+            },
+            {}
+        )
     }
 }

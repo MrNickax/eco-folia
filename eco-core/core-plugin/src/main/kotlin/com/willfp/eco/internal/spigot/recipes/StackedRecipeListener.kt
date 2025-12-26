@@ -3,11 +3,14 @@ package com.willfp.eco.internal.spigot.recipes
 import com.willfp.eco.core.EcoPlugin
 import com.willfp.eco.core.items.TestableItem
 import com.willfp.eco.core.items.isEcoEmpty
+import com.willfp.eco.core.placeholder.context.placeholderContext
 import com.willfp.eco.core.recipe.Recipes
 import com.willfp.eco.core.recipe.parts.GroupedTestableItems
 import com.willfp.eco.core.recipe.parts.TestableStack
 import com.willfp.eco.core.recipe.recipes.CraftingRecipe
 import org.bukkit.Material
+import org.bukkit.entity.Entity
+import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
@@ -111,7 +114,7 @@ class StackedRecipeListener(
             // Everything has to be cloned because the inventory changes the item
             inventory.matrix[i] = item.clone() // Use un-cloned version first
             // This isn't even funny anymore
-            runTwice {
+            runTwice (event.whoClicked) {
                 val newItem = item.clone()
                 // Just use every method possible to set the item
                 inventory.matrix[i] = newItem
@@ -134,9 +137,13 @@ class StackedRecipeListener(
         inventory.result = existingResult
     }
 
-    private fun runTwice(block: () -> Unit) {
+    private fun runTwice(source: Entity, block: () -> Unit) {
         block()
-        plugin.scheduler.run(block)
+        source.scheduler.run(
+            plugin,
+            { block() },
+            {}
+        )
     }
 
     companion object {

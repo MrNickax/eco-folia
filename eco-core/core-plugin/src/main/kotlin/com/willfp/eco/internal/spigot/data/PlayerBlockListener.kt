@@ -63,11 +63,11 @@ class PlayerBlockListener(
             }
         }
 
-        this.plugin.scheduler.run {
+        val first = locs.firstOrNull() ?: return
+        Bukkit.getRegionScheduler().run(plugin, first) {
             for (loc in toRemove) {
                 removeKey(loc)
             }
-
             for (loc in locs) {
                 writeKey(loc)
             }
@@ -86,11 +86,11 @@ class PlayerBlockListener(
             }
         }
 
-        this.plugin.scheduler.run {
+        val first = locs.firstOrNull() ?: return
+        Bukkit.getRegionScheduler().run(plugin, first) {
             for (loc in toRemove) {
                 removeKey(loc)
             }
-
             for (loc in locs) {
                 writeKey(loc)
             }

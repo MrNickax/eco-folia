@@ -16,11 +16,15 @@ class ArmorChangeEventListeners(
     fun onArmorChange(event: ArmorEquipEvent) {
         val player = event.player
         val before = player.inventory.armorContents.toMutableList()
-        plugin.scheduler.run {
-            val after = player.inventory.armorContents.toMutableList()
-            val armorChangeEvent = ArmorChangeEvent(player, before, after)
-            Bukkit.getPluginManager().callEvent(armorChangeEvent)
-        }
+        player.scheduler.run(
+            plugin,
+            {
+                val after = player.inventory.armorContents.toMutableList()
+                val armorChangeEvent = ArmorChangeEvent(player, before, after)
+                Bukkit.getPluginManager().callEvent(armorChangeEvent)
+            },
+            {}
+        )
     }
 
     @EventHandler

@@ -234,6 +234,6 @@ class GUIListener(private val plugin: EcoPlugin) : Listener {
         val rendered = this.renderedInventory ?: return
 
         rendered.render()
-        plugin.scheduler.run { rendered.render() }
+        this.scheduler.run { rendered.render() }
     }
 }
