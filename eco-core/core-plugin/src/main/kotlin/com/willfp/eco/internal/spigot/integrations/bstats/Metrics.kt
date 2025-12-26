@@ -252,7 +252,7 @@ class Metrics(private val plugin: EcoPlugin) {
             plugin.bStatsId,
             { builder: JsonObjectBuilder -> appendPlatformData(builder) },
             { builder: JsonObjectBuilder -> appendServiceData(builder) },
-            { submitDataTask: Runnable? -> Bukkit.getScheduler().runTask(plugin, submitDataTask!!) },
+            { submitDataTask: Runnable? -> Bukkit.getGlobalRegionScheduler().run(plugin) { submitDataTask!!.run() } },
             { plugin.isEnabled },
             { message: String? -> this.plugin.logger.log(Level.INFO, message) },
             logSentData,

@@ -1,6 +1,9 @@
 package com.willfp.eco.core.web;
 
 import com.willfp.eco.core.Eco;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -61,41 +64,44 @@ public class Paste {
      *
      * @param callback The consumer to accept the response token.
      */
-    public void getHastebinToken(@NotNull final Consumer<String> callback) {
-        Eco.get().getEcoPlugin().getScheduler().runAsync(() -> {
-            try {
-                byte[] postData = URLEncoder.encode(contents, StandardCharsets.UTF_8).getBytes(StandardCharsets.UTF_8);
-                int postDataLength = postData.length;
+    public void getHastebinToken(@NotNull final Plugin plugin, @NotNull final Consumer<String> callback) {
+        Bukkit.getAsyncScheduler().runNow(
+                plugin,
+                scheduledTask -> {
+                    try {
+                        byte[] postData = URLEncoder.encode(contents, StandardCharsets.UTF_8).getBytes(StandardCharsets.UTF_8);
+                        int postDataLength = postData.length;
 
-                String requestURL = this.host + "/documents";
-                URL url = new URL(requestURL);
-                HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
-                conn.setDoOutput(true);
-                conn.setInstanceFollowRedirects(false);
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("User-Agent", "eco-Hastebin");
-                conn.setRequestProperty("Content-Length", Integer.toString(postDataLength));
-                conn.setUseCaches(false);
+                        String requestURL = this.host + "/documents";
+                        URL url = new URL(requestURL);
+                        HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+                        conn.setDoOutput(true);
+                        conn.setInstanceFollowRedirects(false);
+                        conn.setRequestMethod("POST");
+                        conn.setRequestProperty("User-Agent", "eco-Hastebin");
+                        conn.setRequestProperty("Content-Length", Integer.toString(postDataLength));
+                        conn.setUseCaches(false);
 
-                String response;
-                DataOutputStream wr;
+                        String response;
+                        DataOutputStream wr;
 
-                wr = new DataOutputStream(conn.getOutputStream());
-                wr.write(postData);
-                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                response = reader.readLine();
+                        wr = new DataOutputStream(conn.getOutputStream());
+                        wr.write(postData);
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                        response = reader.readLine();
 
-                assert response != null;
+                        assert response != null;
 
-                if (response.contains("\"key\"")) {
-                    response = response.substring(response.indexOf(":") + 2, response.length() - 2);
+                        if (response.contains("\"key\"")) {
+                            response = response.substring(response.indexOf(":") + 2, response.length() - 2);
 
-                    callback.accept(response);
+                            callback.accept(response);
+                        }
+                    } catch (IOException e) {
+                        callback.accept(e.getMessage());
+                    }
                 }
-            } catch (IOException e) {
-                callback.accept(e.getMessage());
-            }
-        });
+        );
     }
 
     /**

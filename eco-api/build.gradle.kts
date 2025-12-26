@@ -3,7 +3,7 @@ dependencies {
     compileOnly("net.kyori:adventure-platform-bukkit:4.1.0")
 
     // Other
-    compileOnly("org.spigotmc:spigot-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("dev.folia:folia-api:1.21.8-R0.1-SNAPSHOT")
     compileOnly("commons-lang:commons-lang:2.6")
     compileOnly("net.dmulloy2:ProtocolLib:5.1.0")
     compileOnly("com.google.code.gson:gson:2.8.8")

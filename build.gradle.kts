@@ -28,7 +28,6 @@ dependencies {
     implementation(project(path = ":eco-core:core-nms:v1_21_7", configuration = "reobf"))
     implementation(project(path = ":eco-core:core-nms:v1_21_8", configuration = "reobf"))
     implementation(project(path = ":eco-core:core-nms:v1_21_10", configuration = "reobf"))
-    implementation(project(path = ":eco-core:core-nms:v1_21_11", configuration = "reobf"))
 }
 
 allprojects {
@@ -40,6 +39,9 @@ allprojects {
 
     repositories {
         mavenCentral()
+        // LibsDisguises
+        maven("https://mvn.lib.co.nz/public/")
+        maven("https://repo.alessiodp.com/releases/")
 
         maven("https://repo.auxilor.io/repository/maven-public/")
 
@@ -86,9 +88,6 @@ allprojects {
         // Crunch
         maven("https://redempt.dev")
 
-        // LibsDisguises
-        maven("https://mvn.lib.co.nz/public")
-
         // PlayerPoints
         maven("https://repo.rosewooddev.io/repository/public/")
 
@@ -106,12 +105,6 @@ allprojects {
 
         // Nexo
         maven("https://repo.nexomc.com/releases")
-
-        // CraftEngine
-        maven("https://repo.momirealms.net/releases/")
-        
-        // CoinsEngine
-        maven("https://repo.nightexpressdev.com/releases")
     }
 
     dependencies {

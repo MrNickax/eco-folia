@@ -20,7 +20,7 @@ dependencies {
 
     // Included in spigot jar
     compileOnly("com.google.code.gson:gson:2.8.8")
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("dev.folia:folia-api:1.21.8-R0.1-SNAPSHOT")
 
     // Plugin dependencies
     compileOnly("net.dmulloy2:ProtocolLib:5.1.0")

@@ -438,15 +438,18 @@ public abstract class EcoPlugin extends JavaPlugin implements PluginLike, Regist
         this.loadPluginCommands().forEach(PluginCommand::register);
 
         // Run preliminary reload to resolve load order issues
-        this.getScheduler().runLater(() -> {
-            Logger before = this.getLogger();
-            // Temporary silence logger.
-            //this.logger = Eco.get().getNOOPLogger();
+        this.scheduler.runLater(
+                () -> {
+                    Logger before = this.getLogger();
+                    // Temporary silence logger.
+                    //this.logger = Eco.get().getNOOPLogger();
 
-            this.reload(false);
+                    this.reload(false);
 
-            //this.logger = before;
-        }, 1);
+                    //this.logger = before;
+                },
+                1
+        );
 
         this.getScheduler().runLater(this::afterLoad, 2);
 

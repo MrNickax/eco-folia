@@ -1,6 +1,7 @@
 package com.willfp.eco.core.web;
 
 import com.willfp.eco.core.EcoPlugin;
+import org.bukkit.Bukkit;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -36,20 +37,23 @@ public class UpdateChecker {
      * @param callback The process to run after checking.
      */
     public void getVersion(@NotNull final Consumer<? super String> callback) {
-        this.getPlugin().getScheduler().runAsync(() -> {
-            try {
-                InputStream inputStream = new URI(
-                        "https://api.polymart.org/v1/getResourceInfoSimple?key=version&resource_id=" + this.getPlugin().getResourceId()
-                ).toURL().openStream();
-                Scanner scanner = new Scanner(inputStream);
+        Bukkit.getAsyncScheduler().runNow(
+                this.plugin,
+                scheduledTask -> {
+                    try {
+                        InputStream inputStream = new URI(
+                                "https://api.polymart.org/v1/getResourceInfoSimple?key=version&resource_id=" + this.getPlugin().getResourceId()
+                        ).toURL().openStream();
+                        Scanner scanner = new Scanner(inputStream);
 
-                if (scanner.hasNext()) {
-                    callback.accept(scanner.next());
+                        if (scanner.hasNext()) {
+                            callback.accept(scanner.next());
+                        }
+                    } catch (IOException | URISyntaxException e) {
+                        this.getPlugin().getLogger().warning("Failed to check for updates: " + e.getMessage());
+                    }
                 }
-            } catch (IOException | URISyntaxException e) {
-                this.getPlugin().getLogger().warning("Failed to check for updates: " + e.getMessage());
-            }
-        });
+        );
     }
 
     /**

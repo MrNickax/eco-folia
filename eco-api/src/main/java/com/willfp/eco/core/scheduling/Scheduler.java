@@ -1,7 +1,7 @@
 package com.willfp.eco.core.scheduling;
 
 import com.willfp.eco.core.EcoPlugin;
-import org.bukkit.scheduler.BukkitTask;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -13,10 +13,10 @@ public interface Scheduler {
      *
      * @param runnable   The lambda to run.
      * @param ticksLater The amount of ticks to wait before execution.
-     * @return The created {@link BukkitTask}.
+     * @return The created {@link ScheduledTask}.
      */
-    BukkitTask runLater(@NotNull Runnable runnable,
-                        long ticksLater);
+    ScheduledTask runLater(@NotNull Runnable runnable,
+                           long ticksLater);
 
     /**
      * Run the task after a specified tick delay.
@@ -25,9 +25,9 @@ public interface Scheduler {
      *
      * @param runnable   The lambda to run.
      * @param ticksLater The amount of ticks to wait before execution.
-     * @return The created {@link BukkitTask}.
+     * @return The created {@link ScheduledTask}.
      */
-    default BukkitTask runLater(long ticksLater,
+    default ScheduledTask runLater(long ticksLater,
                                 @NotNull Runnable runnable) {
         return runLater(runnable, ticksLater);
     }
@@ -38,9 +38,9 @@ public interface Scheduler {
      * @param runnable The lambda to run.
      * @param delay    The amount of ticks to wait before the first execution.
      * @param repeat   The amount of ticks to wait between executions.
-     * @return The created {@link BukkitTask}.
+     * @return The created {@link ScheduledTask}.
      */
-    BukkitTask runTimer(@NotNull Runnable runnable,
+    ScheduledTask runTimer(@NotNull Runnable runnable,
                         long delay,
                         long repeat);
 
@@ -52,9 +52,9 @@ public interface Scheduler {
      * @param runnable The lambda to run.
      * @param delay    The amount of ticks to wait before the first execution.
      * @param repeat   The amount of ticks to wait between executions.
-     * @return The created {@link BukkitTask}.
+     * @return The created {@link ScheduledTask}.
      */
-    default BukkitTask runTimer(long delay,
+    default ScheduledTask runTimer(long delay,
                                 long repeat,
                                 @NotNull Runnable runnable) {
         return runTimer(runnable, delay, repeat);
@@ -66,9 +66,9 @@ public interface Scheduler {
      * @param runnable The lambda to run.
      * @param delay    The amount of ticks to wait before the first execution.
      * @param repeat   The amount of ticks to wait between executions.
-     * @return The created {@link BukkitTask}.
+     * @return The created {@link ScheduledTask}.
      */
-    BukkitTask runAsyncTimer(@NotNull Runnable runnable,
+    ScheduledTask runAsyncTimer(@NotNull Runnable runnable,
                              long delay,
                              long repeat);
 
@@ -80,9 +80,9 @@ public interface Scheduler {
      * @param runnable The lambda to run.
      * @param delay    The amount of ticks to wait before the first execution.
      * @param repeat   The amount of ticks to wait between executions.
-     * @return The created {@link BukkitTask}.
+     * @return The created {@link ScheduledTask}.
      */
-    default BukkitTask runAsyncTimer(long delay,
+    default ScheduledTask runAsyncTimer(long delay,
                                      long repeat,
                                      @NotNull Runnable runnable) {
         return runAsyncTimer(runnable, delay, repeat);
@@ -92,45 +92,17 @@ public interface Scheduler {
      * Run the task.
      *
      * @param runnable The lambda to run.
-     * @return The created {@link BukkitTask}.
+     * @return The created {@link ScheduledTask}.
      */
-    BukkitTask run(@NotNull Runnable runnable);
+    ScheduledTask run(@NotNull Runnable runnable);
 
     /**
      * Run the task asynchronously.
      *
      * @param runnable The lambda to run.
-     * @return The created {@link BukkitTask}.
+     * @return The created {@link ScheduledTask}.
      */
-    BukkitTask runAsync(@NotNull Runnable runnable);
-
-    /**
-     * Schedule the task to be ran repeatedly on a timer.
-     *
-     * @param runnable The lambda to run.
-     * @param delay    The amount of ticks to wait before the first execution.
-     * @param repeat   The amount of ticks to wait between executions.
-     * @return The id of the task.
-     */
-    int syncRepeating(@NotNull Runnable runnable,
-                      long delay,
-                      long repeat);
-
-    /**
-     * Schedule the task to be ran repeatedly on a timer.
-     * <p>
-     * Reordered for better kotlin interop.
-     *
-     * @param runnable The lambda to run.
-     * @param delay    The amount of ticks to wait before the first execution.
-     * @param repeat   The amount of ticks to wait between executions.
-     * @return The id of the task.
-     */
-    default int syncRepeating(long delay,
-                              long repeat,
-                              @NotNull Runnable runnable) {
-        return syncRepeating(runnable, delay, repeat);
-    }
+    ScheduledTask runAsync(@NotNull Runnable runnable);
 
     /**
      * Cancel all running tasks from the linked {@link EcoPlugin}.

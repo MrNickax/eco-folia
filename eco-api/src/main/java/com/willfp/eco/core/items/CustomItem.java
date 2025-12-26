@@ -1,6 +1,7 @@
 package com.willfp.eco.core.items;
 
 import com.willfp.eco.core.Eco;
+import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -52,11 +53,15 @@ public class CustomItem implements TestableItem {
         immediately after due to registration order; so eco waits until the item should be
         working in order to check.
          */
-        Eco.get().getEcoPlugin().getScheduler().runLater(() -> {
-            if (!matches(getItem())) {
-                Eco.get().getEcoPlugin().getLogger().severe("Item with key " + key + " is invalid!");
-            }
-        }, 1);
+        Bukkit.getGlobalRegionScheduler().runDelayed(
+                Eco.get().getEcoPlugin(),
+                scheduledTask -> {
+                    if (!matches(getItem())) {
+                        Eco.get().getEcoPlugin().getLogger().severe("Item with key " + key + " is invalid!");
+                    }
+                },
+                1
+        );
     }
 
     @Override

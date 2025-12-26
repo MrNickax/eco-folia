@@ -2,50 +2,59 @@ package com.willfp.eco.internal.scheduling
 
 import com.willfp.eco.core.EcoPlugin
 import com.willfp.eco.core.scheduling.Scheduler
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask
 import org.bukkit.Bukkit
-import org.bukkit.scheduler.BukkitTask
+import java.util.concurrent.TimeUnit
 
 class EcoScheduler(private val plugin: EcoPlugin) : Scheduler {
     override fun runLater(
         runnable: Runnable,
         ticksLater: Long
-    ): BukkitTask {
-        return Bukkit.getScheduler().runTaskLater(plugin, runnable, ticksLater)
+    ): ScheduledTask {
+        return Bukkit.getGlobalRegionScheduler().runDelayed(
+            plugin,
+            { runnable.run() },
+            ticksLater
+        )
     }
 
     override fun runTimer(
         runnable: Runnable,
         delay: Long,
         repeat: Long
-    ): BukkitTask {
-        return Bukkit.getScheduler().runTaskTimer(plugin, runnable, delay, repeat)
+    ): ScheduledTask {
+        return Bukkit.getGlobalRegionScheduler().runAtFixedRate(
+            plugin,
+            { runnable.run() },
+            delay,
+            repeat
+        )
     }
 
     override fun runAsyncTimer(
         runnable: Runnable,
         delay: Long,
         repeat: Long
-    ): BukkitTask {
-        return Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, runnable, delay, repeat)
+    ): ScheduledTask {
+        return Bukkit.getAsyncScheduler().runAtFixedRate(
+            plugin,
+            { runnable.run() },
+            delay * 50,
+            repeat * 50,
+            TimeUnit.MILLISECONDS
+        )
     }
 
-    override fun run(runnable: Runnable): BukkitTask {
-        return Bukkit.getScheduler().runTask(plugin, runnable)
+    override fun run(runnable: Runnable): ScheduledTask {
+        return Bukkit.getGlobalRegionScheduler().run(plugin) { runnable.run() }
     }
 
-    override fun runAsync(runnable: Runnable): BukkitTask {
-        return Bukkit.getScheduler().runTaskAsynchronously(plugin, runnable)
-    }
-
-    override fun syncRepeating(
-        runnable: Runnable,
-        delay: Long,
-        repeat: Long
-    ): Int {
-        return Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, runnable, delay, repeat)
+    override fun runAsync(runnable: Runnable): ScheduledTask {
+        return Bukkit.getAsyncScheduler().runNow(plugin) { runnable.run() }
     }
 
     override fun cancelAll() {
-        Bukkit.getScheduler().cancelTasks(plugin)
+        Bukkit.getGlobalRegionScheduler().cancelTasks(this.plugin)
+        Bukkit.getAsyncScheduler().cancelTasks(this.plugin)
     }
 }

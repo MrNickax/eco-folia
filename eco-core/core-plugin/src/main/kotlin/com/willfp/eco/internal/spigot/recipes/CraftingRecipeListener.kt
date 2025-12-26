@@ -18,28 +18,31 @@ class CraftingRecipeListener(val plugin: EcoPlugin) : Listener {
             return
         }
 
-        if (!event.recipe.key.contains("_displayed")) {
-            event.isCancelled = true
+        if (event.recipe.key.contains("_displayed")) return
 
-            val player = event.player
-            player.discoverRecipe(
-                namespacedKeyOf(
-                    event.recipe.namespace,
-                    event.recipe.key + "_displayed"
-                )
+        event.isCancelled = true
+
+        val player = event.player
+        player.discoverRecipe(
+            namespacedKeyOf(
+                event.recipe.namespace,
+                event.recipe.key + "_displayed"
             )
-        }
+        )
     }
 
     @EventHandler
     fun processListeners(event: PrepareItemCraftEvent) {
         handlePrepare(event)
 
-        if (plugin.configYml.getBool("enforce-preparing-recipes")) {
-            plugin.scheduler.runLater(1) {
-                handlePrepare(event)
-            }
-        }
+        if (!plugin.configYml.getBool("enforce-preparing-recipes")) return
+
+        event.view.player.scheduler.runDelayed(
+            this.plugin,
+            { handlePrepare(event) },
+            {},
+            1
+        )
     }
 
     private fun handlePrepare(event: PrepareItemCraftEvent) {
@@ -52,9 +55,7 @@ class CraftingRecipeListener(val plugin: EcoPlugin) : Listener {
             }
         }
 
-        if (recipe == null) {
-            return
-        }
+        if (recipe == null) return
 
         for (listener in listeners) {
             listener.handle(WrappedPrepareItemCraftEvent(event, recipe))
@@ -63,9 +64,7 @@ class CraftingRecipeListener(val plugin: EcoPlugin) : Listener {
 
     @EventHandler
     fun processListeners(event: CraftItemEvent) {
-        if (event.recipe !is Keyed) {
-            return
-        }
+        if (event.recipe !is Keyed) return
 
         for (listener in listeners) {
             listener.handle(WrappedCraftItemEvent(event))
