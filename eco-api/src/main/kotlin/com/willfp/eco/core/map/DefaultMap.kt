@@ -10,13 +10,13 @@ package com.willfp.eco.core.map
 @Suppress("RedundantOverride")
 class MutableListMap<K : Any, V> : ListMap<K, V>() {
     /**
-     * Override with enforced MutableList type.
+     * Override with the enforced MutableList type.
      */
     override fun get(key: K?): MutableList<V> =
         super.get(key)
 
     /**
-     * Override with enforced MutableList type.
+     * Override with the enforced MutableList type.
      */
     override fun getOrDefault(key: K, defaultValue: MutableList<V>): MutableList<V> {
         return super.getOrDefault(key, defaultValue)
@@ -51,6 +51,6 @@ fun <K : Any, K1 : Any, V> nestedMap() =
  * @see DefaultMap.createNestedListMap
  */
 fun <K : Any, K1 : Any, V> nestedListMap() =
-    DefaultMap<K, MutableListMap<K1, V>>() {
+    DefaultMap<K, MutableListMap<K1, V>> {
         MutableListMap()
     }

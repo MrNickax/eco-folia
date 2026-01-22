@@ -28,6 +28,7 @@ dependencies {
     implementation(project(path = ":eco-core:core-nms:v1_21_7", configuration = "reobf"))
     implementation(project(path = ":eco-core:core-nms:v1_21_8", configuration = "reobf"))
     implementation(project(path = ":eco-core:core-nms:v1_21_10", configuration = "reobf"))
+    implementation(project(path = ":eco-core:core-nms:v1_21_11", configuration = "reobf"))
 }
 
 allprojects {
@@ -48,6 +49,8 @@ allprojects {
         maven("https://jitpack.io") {
             content { includeGroupByRegex("com\\.github\\..*") }
         }
+
+        maven("https://repo.momirealms.net/releases/")
 
         // Paper
         maven("https://repo.papermc.io/repository/maven-public/")
@@ -76,9 +79,6 @@ allprojects {
         // FactionsUUID
         //maven("https://ci.ender.zone/plugin/repository/everything/")
 
-        // NoCheatPlus
-        maven("https://repo.md-5.net/content/repositories/snapshots/")
-
         // CombatLogX
         maven("https://nexus.sirblobman.xyz/public/")
 
@@ -105,6 +105,11 @@ allprojects {
 
         // Nexo
         maven("https://repo.nexomc.com/releases")
+
+        maven {
+            name = "nightexpress-releases"
+            url = uri("https://repo.nightexpressdev.com/releases")
+        }
     }
 
     dependencies {

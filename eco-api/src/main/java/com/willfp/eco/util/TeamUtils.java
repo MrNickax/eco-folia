@@ -2,13 +2,10 @@ package com.willfp.eco.util;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.Objects;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Utilities / API methods for teams.
@@ -20,45 +17,16 @@ public final class TeamUtils {
     private static final BiMap<ChatColor, Team> CHAT_COLOR_TEAMS = HashBiMap.create();
 
     /**
-     * The server scoreboard.
-     */
-    private static final Scoreboard SCOREBOARD = Objects.requireNonNull(Bukkit.getScoreboardManager()).getMainScoreboard();
-
-    /**
      * Get team from {@link ChatColor}.
      * <p>
-     * For {@link org.bukkit.potion.PotionEffectType#GLOWING}.
+     * For {@link org.bukkit.potion.PotionEffectType#GLOWING}. Not supported on Folia.
      *
      * @param color The color to find the team for.
-     * @return The team.
+     * @return The team, or null if unavailable.
      */
-    @NotNull
+    @Nullable
     public static Team fromChatColor(@NotNull final ChatColor color) {
-        if (CHAT_COLOR_TEAMS.containsKey(color)) {
-            return CHAT_COLOR_TEAMS.get(color);
-        }
-
-        Team team;
-
-        if (!SCOREBOARD.getTeams().stream().map(Team::getName).toList().contains("EC-" + color.name())) {
-            team = SCOREBOARD.registerNewTeam("EC-" + color.name());
-        } else {
-            team = SCOREBOARD.getTeam("EC-" + color.name());
-        }
-        assert team != null;
-        team.setColor(color);
-        CHAT_COLOR_TEAMS.forcePut(color, team);
-
-        return team;
-    }
-
-    static {
-        for (ChatColor value : ChatColor.values()) {
-            if (!value.isColor()) {
-                continue;
-            }
-            fromChatColor(value);
-        }
+        return CHAT_COLOR_TEAMS.get(color);
     }
 
     private TeamUtils() {

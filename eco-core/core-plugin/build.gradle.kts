@@ -20,7 +20,7 @@ dependencies {
 
     // Included in spigot jar
     compileOnly("com.google.code.gson:gson:2.8.8")
-    compileOnly("dev.folia:folia-api:1.21.8-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
 
     // Plugin dependencies
     compileOnly("net.dmulloy2:ProtocolLib:5.1.0")
@@ -31,7 +31,6 @@ dependencies {
     }
     compileOnly("com.github.angeschossen:LandsAPI:6.26.18")
     compileOnly("com.github.angeschossen:PluginFrameworkAPI:1.0.0")
-    compileOnly("fr.neatmonster:nocheatplus:3.16.1-SNAPSHOT")
     compileOnly("com.github.jiangdashao:matrix-api-repo:317d4635fd")
     compileOnly("com.gmail.nossr50.mcMMO:mcMMO:2.1.202")
     compileOnly("me.clip:placeholderapi:2.11.6")
@@ -71,7 +70,6 @@ dependencies {
     compileOnly("com.github.jojodmo:ItemBridge:b0054538c1")
     compileOnly("de.oliver:FancyHolograms:2.4.0")
     compileOnly("su.nightexpress.coinsengine:CoinsEngine:2.6.0")
-    compileOnly("su.nightexpress.excellentshop:Core:4.22.0")
 
     compileOnly(fileTree("../../lib") {
         include("*.jar")

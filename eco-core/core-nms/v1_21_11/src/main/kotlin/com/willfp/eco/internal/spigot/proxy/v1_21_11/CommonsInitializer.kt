@@ -1,23 +1,24 @@
-package com.willfp.eco.internal.spigot.proxy.v1_21_5
+package com.willfp.eco.internal.spigot.proxy.v1_21_11
 
+import com.mojang.serialization.JsonOps
 import com.willfp.eco.core.EcoPlugin
 import com.willfp.eco.internal.spigot.proxies.CommonsInitializerProxy
 import com.willfp.eco.internal.spigot.proxy.common.CommonsProvider
 import com.willfp.eco.internal.spigot.proxy.common.packet.PacketInjectorListener
-import com.willfp.eco.internal.spigot.proxy.common.toResourceLocation
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.serializer.json.JSONComponentSerializer
 import net.minecraft.core.component.DataComponents
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.Tag
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.network.chat.ComponentSerialization
+import net.minecraft.resources.RegistryOps
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.util.GsonHelper
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.item.Item
 import org.bukkit.Bukkit
 import org.bukkit.Material
-import org.bukkit.NamespacedKey
 import org.bukkit.craftbukkit.CraftServer
 import org.bukkit.craftbukkit.entity.CraftEntity
 import org.bukkit.craftbukkit.entity.CraftMob
@@ -60,9 +61,6 @@ class CommonsInitializer : CommonsInitializerProxy {
             val craft = mob as? CraftMob ?: return null
             return craft.handle as? PathfinderMob
         }
-
-        override fun toResourceLocation(namespacedKey: NamespacedKey): ResourceLocation =
-            CraftNamespacedKey.toMinecraft(namespacedKey)
 
         override fun asNMSStack(itemStack: ItemStack): net.minecraft.world.item.ItemStack {
             return if (itemStack !is CraftItemStack) {
@@ -121,21 +119,13 @@ class CommonsInitializer : CommonsInitializerProxy {
                 for ((key, value) in rawPublicMap) {
                     compound.put(key, value)
                 }
-
                 return compound
             }
 
-            val container = when (pdc) {
-                is CraftPersistentDataContainer? -> pdc
-                else -> null
-            }
+            val container = pdc as? CraftPersistentDataContainer
 
             if (item != null) {
                 if (container != null && !container.isEmpty) {
-                    for (key in tag.keySet()) {
-                        tag.remove(key)
-                    }
-
                     tag.merge(container.toTag())
                 } else {
                     item.remove(DataComponents.CUSTOM_DATA)
@@ -143,15 +133,12 @@ class CommonsInitializer : CommonsInitializerProxy {
             } else {
                 if (container != null && !container.isEmpty) {
                     tag.put("PublicBukkitValues", container.toTag())
-                } else {
-                    tag.remove("PublicBukkitValues")
                 }
             }
         }
 
         override fun materialToItem(material: Material): Item =
-            BuiltInRegistries.ITEM.getOptional(material.key.toResourceLocation())
-                .orElseThrow { IllegalArgumentException("Material is not item!") }
+            BuiltInRegistries.ITEM.getOptional(CraftNamespacedKey.toMinecraft(material.key)).orElseThrow { IllegalArgumentException("Material is not item!") }
 
         override fun itemToMaterial(item: Item) =
             Material.getMaterial(BuiltInRegistries.ITEM.getKey(item).path.uppercase())
@@ -163,9 +150,15 @@ class CommonsInitializer : CommonsInitializerProxy {
 
         override fun toNMS(component: Component): net.minecraft.network.chat.Component {
             val json = JSONComponentSerializer.json().serialize(component)
-            val holderLookupProvider = (Bukkit.getServer() as CraftServer).server.registryAccess()
 
-            return net.minecraft.network.chat.Component.Serializer.fromJson(json, holderLookupProvider)!!
+            val registryAccess = (Bukkit.getServer() as CraftServer).server.registryAccess()
+
+            val element = GsonHelper.parse(json)
+            val ops = RegistryOps.create(JsonOps.INSTANCE, registryAccess)
+
+            return ComponentSerialization.CODEC
+                .parse(ops, element)
+                .getOrThrow { error -> IllegalArgumentException(error) }
         }
     }
 }

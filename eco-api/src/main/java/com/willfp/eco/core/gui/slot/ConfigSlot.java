@@ -1,5 +1,7 @@
 package com.willfp.eco.core.gui.slot;
 
+import com.willfp.eco.core.EcoPlugin;
+
 import com.willfp.eco.core.config.interfaces.Config;
 import com.willfp.eco.core.fast.FastItemStack;
 import com.willfp.eco.core.gui.slot.functional.SlotHandler;
@@ -115,7 +117,7 @@ public class ConfigSlot extends CustomSlot {
      * Signifies a command to dispatch.
      *
      * @param command The command.
-     * @param console If the command should be run as console.
+     * @param console If the command should be run as a console.
      */
     private record CommandToDispatch(
             @NotNull String command,
@@ -127,15 +129,26 @@ public class ConfigSlot extends CustomSlot {
          * @param player The player.
          */
         void dispatch(@NotNull final Player player) {
+            String commandToRun = command().replace("%player%", player.getName());
+
             if (console()) {
-                Bukkit.dispatchCommand(
-                        Bukkit.getConsoleSender(),
-                        command().replace("%player%", player.getName())
+                // Schedule command to run on the global region (Folia-safe)
+                Bukkit.getGlobalRegionScheduler().run(
+                        EcoPlugin.getPlugin(EcoPlugin.class),
+                        (task) -> Bukkit.dispatchCommand(
+                                Bukkit.getConsoleSender(),
+                                commandToRun
+                        )
                 );
             } else {
-                Bukkit.dispatchCommand(
-                        player,
-                        command().replace("%player%", player.getName())
+                // Schedule command to run on the player's entity scheduler (Folia-safe)
+                player.getScheduler().run(
+                        EcoPlugin.getPlugin(EcoPlugin.class),
+                        (task) -> Bukkit.dispatchCommand(
+                                player,
+                                commandToRun
+                        ),
+                        null
                 );
             }
         }

@@ -233,7 +233,7 @@ class GUIListener(private val plugin: EcoPlugin) : Listener {
     private fun Player.renderActiveMenu() {
         val rendered = this.renderedInventory ?: return
 
-        rendered.render()
-        this.scheduler.run { rendered.render() }
+        this.scheduler.runDelayed(plugin, { rendered.render() }, null, 1L)
+        this.scheduler.runDelayed(plugin, { rendered.render() }, null, 5L)
     }
 }

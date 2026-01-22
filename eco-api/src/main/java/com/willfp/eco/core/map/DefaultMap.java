@@ -72,14 +72,23 @@ public class DefaultMap<K, V> implements Map<K, V> {
     @SuppressWarnings("unchecked")
     public V get(@Nullable final Object key) {
         if (key == null) {
-            return defaultValue.get();
+            V value = defaultValue.get();
+            if (value == null) {
+                throw new IllegalStateException("Default value supplier returned null for null key");
+            }
+            return value;
         }
 
-        if (map.get(key) == null) {
-            map.put((K) key, defaultValue.get());
+        V value = map.get(key);
+        if (value == null) {
+            value = defaultValue.get();
+            if (value == null) {
+                throw new IllegalStateException("Default value supplier returned null for key: " + key);
+            }
+            map.put((K) key, value);
         }
 
-        return map.get(key);
+        return value;
     }
 
     @Override

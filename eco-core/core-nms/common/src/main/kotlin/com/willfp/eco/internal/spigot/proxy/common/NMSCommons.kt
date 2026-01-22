@@ -30,7 +30,7 @@ val NBT_TAG_STRING by lazy { impl.nbtTagString }
 fun Mob.toPathfinderMob(): PathfinderMob? =
     impl.toPathfinderMob(this)
 
-fun NamespacedKey.toResourceLocation(): ResourceLocation =
+fun NamespacedKey.toResourceLocation(): ResourceLocation? =
     impl.toResourceLocation(this)
 
 fun ItemStack.asNMSStack(): net.minecraft.world.item.ItemStack =
@@ -95,7 +95,9 @@ interface CommonsProvider {
 
     fun toPathfinderMob(mob: Mob): PathfinderMob?
 
-    fun toResourceLocation(namespacedKey: NamespacedKey): ResourceLocation
+    fun toResourceLocation(namespacedKey: NamespacedKey): ResourceLocation? {
+        return null  // Default implementation, optional to override
+    }
 
     fun asNMSStack(itemStack: ItemStack): net.minecraft.world.item.ItemStack
 
