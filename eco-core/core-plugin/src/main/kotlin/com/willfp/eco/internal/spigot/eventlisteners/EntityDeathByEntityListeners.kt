@@ -7,11 +7,12 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
+import java.util.concurrent.ConcurrentHashMap
 
 class EntityDeathByEntityListeners(
     private val plugin: EcoPlugin
 ) : Listener {
-    private val events = mutableSetOf<EntityDeathByEntityBuilder>()
+    private val events = ConcurrentHashMap.newKeySet<EntityDeathByEntityBuilder>()
 
     @EventHandler(priority = EventPriority.HIGH)
     fun onEntityDamage(event: EntityDamageByEntityEvent) {
