@@ -349,11 +349,11 @@ open class EcoFastItemStack(
     }
 
     override fun getRepairCost(): Int {
-        return handle.get(DataComponents.REPAIR_COST) ?: 0
+        return (handle.get(DataComponents.REPAIR_COST) ?: 0).coerceAtLeast(0)
     }
 
     override fun setRepairCost(cost: Int) {
-        handle.set(DataComponents.REPAIR_COST, cost)
+        handle.set(DataComponents.REPAIR_COST, cost.coerceAtLeast(0))
 
         apply()
     }
