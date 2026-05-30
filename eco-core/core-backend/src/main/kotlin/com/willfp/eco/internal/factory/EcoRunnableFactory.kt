@@ -8,6 +8,10 @@ import java.util.function.Consumer
 
 class EcoRunnableFactory(private val plugin: EcoPlugin) : RunnableFactory {
     override fun create(consumer: Consumer<RunnableTask>): RunnableTask {
-        throw UnsupportedOperationException("Not supported in 1.20.5+")
+        return object : EcoRunnableTask(plugin) {
+            override fun run() {
+                consumer.accept(this)
+            }
+        }
     }
 }

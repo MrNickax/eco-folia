@@ -1,10 +1,14 @@
 package com.willfp.eco.internal.spigot.proxy.v1_21_11
 
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonElement
 import com.mojang.serialization.JsonOps
 import com.willfp.eco.core.EcoPlugin
 import com.willfp.eco.internal.spigot.proxies.CommonsInitializerProxy
 import com.willfp.eco.internal.spigot.proxy.common.CommonsProvider
 import com.willfp.eco.internal.spigot.proxy.common.packet.PacketInjectorListener
+import com.willfp.eco.internal.spigot.proxy.common.recipes.RecipeManager
+import java.lang.reflect.Field
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.serializer.json.JSONComponentSerializer
 import net.minecraft.core.component.DataComponents
@@ -12,13 +16,12 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.Tag
 import net.minecraft.network.chat.ComponentSerialization
-import net.minecraft.resources.RegistryOps
 import net.minecraft.server.level.ServerPlayer
-import net.minecraft.util.GsonHelper
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.item.Item
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.NamespacedKey
 import org.bukkit.craftbukkit.CraftServer
 import org.bukkit.craftbukkit.entity.CraftEntity
 import org.bukkit.craftbukkit.entity.CraftMob
@@ -32,11 +35,10 @@ import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Mob
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.Recipe
 import org.bukkit.persistence.PersistentDataContainer
-import java.lang.reflect.Field
 
 class CommonsInitializer : CommonsInitializerProxy {
-
     override fun init(plugin: EcoPlugin) {
         CommonsProvider.setIfNeeded(CommonsProviderImpl)
         plugin.onEnable {
@@ -44,9 +46,33 @@ class CommonsInitializer : CommonsInitializerProxy {
         }
     }
 
+    override fun addBukkitRecipeNoResend(recipe: Recipe) {
+        CommonsProviderImpl.addBukkitRecipeNoResend(recipe)
+    }
+
+    override fun removeBukkitRecipeNoResend(key: NamespacedKey): Boolean {
+        return CommonsProviderImpl.removeBukkitRecipeNoResend(key)
+    }
+
+    override fun reloadBukkitRecipes() {
+        CommonsProviderImpl.resendBukkitRecipes()
+    }
+
     object CommonsProviderImpl : CommonsProvider {
         private val cisHandle: Field = CraftItemStack::class.java.getDeclaredField("handle").apply {
             isAccessible = true
+        }
+
+        override fun addBukkitRecipeNoResend(recipe: Recipe) {
+            RecipeManager.addRecipeNoResend(recipe)
+        }
+
+        override fun removeBukkitRecipeNoResend(key: NamespacedKey): Boolean {
+            return RecipeManager.removeRecipeNoResend(key)
+        }
+
+        override fun resendBukkitRecipes() {
+            RecipeManager.reloadRecipes()
         }
 
         private val pdcRegsitry = CraftMetaArmor::class.java
@@ -54,8 +80,6 @@ class CommonsInitializer : CommonsInitializerProxy {
             .getDeclaredField("DATA_TYPE_REGISTRY")
             .apply { isAccessible = true }
             .get(null) as CraftPersistentDataTypeRegistry
-
-        override val nbtTagString = 8
 
         override fun toPathfinderMob(mob: Mob): PathfinderMob? {
             val craft = mob as? CraftMob ?: return null
@@ -119,13 +143,21 @@ class CommonsInitializer : CommonsInitializerProxy {
                 for ((key, value) in rawPublicMap) {
                     compound.put(key, value)
                 }
+
                 return compound
             }
 
-            val container = pdc as? CraftPersistentDataContainer
+            val container = when (pdc) {
+                is CraftPersistentDataContainer? -> pdc
+                else -> null
+            }
 
             if (item != null) {
                 if (container != null && !container.isEmpty) {
+                    for (key in tag.keySet()) {
+                        tag.remove(key)
+                    }
+
                     tag.merge(container.toTag())
                 } else {
                     item.remove(DataComponents.CUSTOM_DATA)
@@ -133,12 +165,15 @@ class CommonsInitializer : CommonsInitializerProxy {
             } else {
                 if (container != null && !container.isEmpty) {
                     tag.put("PublicBukkitValues", container.toTag())
+                } else {
+                    tag.remove("PublicBukkitValues")
                 }
             }
         }
 
         override fun materialToItem(material: Material): Item =
-            BuiltInRegistries.ITEM.getOptional(CraftNamespacedKey.toMinecraft(material.key)).orElseThrow { IllegalArgumentException("Material is not item!") }
+            BuiltInRegistries.ITEM.getOptional(CraftNamespacedKey.toMinecraft(material.key))
+                .orElseThrow { IllegalArgumentException("Material is not item!") }
 
         override fun itemToMaterial(item: Item) =
             Material.getMaterial(BuiltInRegistries.ITEM.getKey(item).path.uppercase())
@@ -148,17 +183,15 @@ class CommonsInitializer : CommonsInitializerProxy {
             return (player as CraftPlayer).handle
         }
 
+        val gson = GsonBuilder().create()!!
+
         override fun toNMS(component: Component): net.minecraft.network.chat.Component {
             val json = JSONComponentSerializer.json().serialize(component)
+            val holderLookupProvider = (Bukkit.getServer() as CraftServer).server.registryAccess()
 
-            val registryAccess = (Bukkit.getServer() as CraftServer).server.registryAccess()
+            val registryOps = holderLookupProvider.createSerializationContext(JsonOps.INSTANCE)
 
-            val element = GsonHelper.parse(json)
-            val ops = RegistryOps.create(JsonOps.INSTANCE, registryAccess)
-
-            return ComponentSerialization.CODEC
-                .parse(ops, element)
-                .getOrThrow { error -> IllegalArgumentException(error) }
+            return ComponentSerialization.CODEC.parse(registryOps, gson.fromJson(json, JsonElement::class.java)).result().get()
         }
     }
 }

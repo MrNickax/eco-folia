@@ -6,10 +6,11 @@ import com.willfp.eco.core.entities.ai.TargetGoal
 import com.willfp.eco.internal.spigot.proxy.common.ai.EntityGoalFactory
 import com.willfp.eco.internal.spigot.proxy.common.ai.TargetGoalFactory
 import io.papermc.paper.adventure.PaperAdventure
+import com.mojang.serialization.JsonOps
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import net.minecraft.nbt.CompoundTag
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.network.chat.ComponentSerialization
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.PathfinderMob
@@ -21,17 +22,13 @@ import org.bukkit.craftbukkit.CraftServer
 import org.bukkit.entity.Mob
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.Recipe
 import org.bukkit.persistence.PersistentDataContainer
 
 private lateinit var impl: CommonsProvider
 
-val NBT_TAG_STRING by lazy { impl.nbtTagString }
-
 fun Mob.toPathfinderMob(): PathfinderMob? =
     impl.toPathfinderMob(this)
-
-fun NamespacedKey.toResourceLocation(): ResourceLocation? =
-    impl.toResourceLocation(this)
 
 fun ItemStack.asNMSStack(): net.minecraft.world.item.ItemStack =
     impl.asNMSStack(this)
@@ -50,6 +47,18 @@ fun <T : EntityGoal<*>> T.getVersionSpecificEntityGoalFactory(): EntityGoalFacto
 
 fun <T : TargetGoal<*>> T.getVersionSpecificEntityGoalFactory(): TargetGoalFactory<T>? =
     impl.getVersionSpecificTargetGoalFactory(this)
+
+fun addBukkitRecipeNoResend(recipe: Recipe) {
+    impl.addBukkitRecipeNoResend(recipe)
+}
+
+fun resendBukkitRecipes() {
+    impl.resendBukkitRecipes()
+}
+
+fun removeBukkitRecipeNoResend(key: NamespacedKey): Boolean {
+    return impl.removeBukkitRecipeNoResend(key)
+}
 
 private val MATERIAL_TO_ITEM = mutableMapOf<Material, Item>()
 
@@ -82,22 +91,18 @@ fun net.minecraft.network.chat.Component.toAdventure(): Component {
         return PaperAdventure.asAdventure(this)
     }
 
-    val json = net.minecraft.network.chat.Component.Serializer.toJson(this, (Bukkit.getServer() as CraftServer).server.registryAccess())
-    return GsonComponentSerializer.gson().deserialize(json)
+    val registryOps = (Bukkit.getServer() as CraftServer).server.registryAccess().createSerializationContext(JsonOps.INSTANCE)
+    val json = ComponentSerialization.CODEC.encodeStart(registryOps, this).result().get()
+    return GsonComponentSerializer.gson().deserialize(json.toString())
 }
 
 interface CommonsProvider {
-    val nbtTagString: Int
 
     fun makePdc(tag: CompoundTag, base: Boolean): PersistentDataContainer
 
     fun setPdc(tag: CompoundTag, pdc: PersistentDataContainer?, item: net.minecraft.world.item.ItemStack? = null)
 
     fun toPathfinderMob(mob: Mob): PathfinderMob?
-
-    fun toResourceLocation(namespacedKey: NamespacedKey): ResourceLocation? {
-        return null  // Default implementation, optional to override
-    }
 
     fun asNMSStack(itemStack: ItemStack): net.minecraft.world.item.ItemStack
 
@@ -122,6 +127,12 @@ interface CommonsProvider {
     fun toNMS(player: Player): ServerPlayer
 
     fun toNMS(component: Component): net.minecraft.network.chat.Component
+
+    fun addBukkitRecipeNoResend(recipe: Recipe)
+
+    fun removeBukkitRecipeNoResend(key: NamespacedKey): Boolean
+
+    fun resendBukkitRecipes()
 
     companion object {
         fun setIfNeeded(provider: CommonsProvider) {

@@ -1,7 +1,6 @@
 package com.willfp.eco.internal.spigot.recipes
 
 import com.willfp.eco.core.EcoPlugin
-import com.willfp.eco.core.Prerequisite
 import com.willfp.eco.core.recipe.Recipes
 import com.willfp.eco.util.namespacedKeyOf
 import org.bukkit.Keyed
@@ -18,31 +17,28 @@ class CraftingRecipeListener(val plugin: EcoPlugin) : Listener {
             return
         }
 
-        if (event.recipe.key.contains("_displayed")) return
+        if (!event.recipe.key.contains("_displayed")) {
+            event.isCancelled = true
 
-        event.isCancelled = true
-
-        val player = event.player
-        player.discoverRecipe(
-            namespacedKeyOf(
-                event.recipe.namespace,
-                event.recipe.key + "_displayed"
+            val player = event.player
+            player.discoverRecipe(
+                namespacedKeyOf(
+                    event.recipe.namespace,
+                    event.recipe.key + "_displayed"
+                )
             )
-        )
+        }
     }
 
     @EventHandler
     fun processListeners(event: PrepareItemCraftEvent) {
         handlePrepare(event)
 
-        if (!plugin.configYml.getBool("enforce-preparing-recipes")) return
-
-        event.view.player.scheduler.runDelayed(
-            this.plugin,
-            { handlePrepare(event) },
-            {},
-            1
-        )
+        if (plugin.configYml.getBool("enforce-preparing-recipes")) {
+            plugin.scheduler.runLater(1) {
+                handlePrepare(event)
+            }
+        }
     }
 
     private fun handlePrepare(event: PrepareItemCraftEvent) {
@@ -55,7 +51,9 @@ class CraftingRecipeListener(val plugin: EcoPlugin) : Listener {
             }
         }
 
-        if (recipe == null) return
+        if (recipe == null) {
+            return
+        }
 
         for (listener in listeners) {
             listener.handle(WrappedPrepareItemCraftEvent(event, recipe))
@@ -64,7 +62,9 @@ class CraftingRecipeListener(val plugin: EcoPlugin) : Listener {
 
     @EventHandler
     fun processListeners(event: CraftItemEvent) {
-        if (event.recipe !is Keyed) return
+        if (event.recipe !is Keyed) {
+            return
+        }
 
         for (listener in listeners) {
             listener.handle(WrappedCraftItemEvent(event))

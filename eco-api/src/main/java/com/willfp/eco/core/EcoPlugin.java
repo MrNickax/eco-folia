@@ -1,5 +1,6 @@
 package com.willfp.eco.core;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.willfp.eco.core.command.impl.PluginCommand;
 import com.willfp.eco.core.config.base.ConfigYml;
@@ -13,17 +14,23 @@ import com.willfp.eco.core.extensions.ExtensionLoader;
 import com.willfp.eco.core.factory.MetadataValueFactory;
 import com.willfp.eco.core.factory.NamespacedKeyFactory;
 import com.willfp.eco.core.factory.RunnableFactory;
+import com.willfp.eco.core.bstats.EcoMetricsChart;
 import com.willfp.eco.core.integrations.IntegrationLoader;
 import com.willfp.eco.core.map.ListMap;
 import com.willfp.eco.core.packet.PacketListener;
 import com.willfp.eco.core.proxy.ProxyFactory;
+import com.willfp.eco.core.price.Prices;
 import com.willfp.eco.core.registry.Registrable;
 import com.willfp.eco.core.registry.Registry;
 import com.willfp.eco.core.scheduling.Scheduler;
 import com.willfp.eco.core.version.OutdatedEcoVersionError;
 import com.willfp.eco.core.version.Version;
 import com.willfp.eco.core.web.UpdateChecker;
-import org.apache.commons.lang.Validate;
+import java.io.File;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -33,17 +40,6 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
  * EcoPlugin is the base plugin class for eco-based plugins.
@@ -93,12 +89,12 @@ public abstract class EcoPlugin extends JavaPlugin implements PluginLike, Regist
     private final LangYml langYml;
 
     /**
-     * The factory to produce {@link org.bukkit.NamespacedKey}s.
+     * The factory to produce {@link NamespacedKey}s.
      */
     private final NamespacedKeyFactory namespacedKeyFactory;
 
     /**
-     * The factory to produce {@link org.bukkit.metadata.FixedMetadataValue}s.
+     * The factory to produce {@link FixedMetadataValue}s.
      */
     private final MetadataValueFactory metadataValueFactory;
 
@@ -373,7 +369,7 @@ public abstract class EcoPlugin extends JavaPlugin implements PluginLike, Regist
 
         if (!(runningVersion.compareTo(requiredVersion) > 0 || runningVersion.equals(requiredVersion))) {
             this.getLogger().severe("You are running an outdated version of eco!");
-            this.getLogger().severe("You must be on at least" + requiredVersion);
+            this.getLogger().severe("You must be on at least " + requiredVersion);
             this.getLogger().severe("Download the newest version here:");
             this.getLogger().severe("https://polymart.org/product/773/eco");
             throw new OutdatedEcoVersionError("This plugin requires at least eco version " + requiredVersion + " to run.");
@@ -427,7 +423,8 @@ public abstract class EcoPlugin extends JavaPlugin implements PluginLike, Regist
         this.loadedIntegrations.removeIf(pl -> pl.equalsIgnoreCase(this.getName()));
 
         if (!this.getLoadedIntegrations().isEmpty()) {
-            this.getLogger().info("Loaded integrations: " + String.join(", ", this.getLoadedIntegrations()));
+            this.getLogger().info("Loaded integrations (" + this.getLoadedIntegrations().size() + "): "
+                    + String.join(", ", this.getLoadedIntegrations()));
         }
 
         Prerequisite.update();
@@ -435,37 +432,37 @@ public abstract class EcoPlugin extends JavaPlugin implements PluginLike, Regist
         this.loadListeners().forEach(listener -> this.getEventManager().registerListener(listener));
         this.loadPacketListeners().forEach(listener -> this.getEventManager().registerPacketListener(listener));
 
-        this.loadPluginCommands().forEach(PluginCommand::register);
+        Eco.get().beginCommandBatch();
+        try {
+            this.loadPluginCommands().forEach(PluginCommand::register);
+        } finally {
+            Eco.get().endCommandBatch();
+        }
 
         // Run preliminary reload to resolve load order issues
-        this.scheduler.runLater(
-                () -> {
-                    Logger before = this.getLogger();
-                    // Temporary silence logger.
-                    //this.logger = Eco.get().getNOOPLogger();
+        this.getScheduler().runLater(() -> {
+            Logger before = this.getLogger();
+            // Temporary silence logger.
+            //this.logger = Eco.get().getNOOPLogger();
 
-                    this.reload(false);
+            this.reload(false);
 
-                    //this.logger = before;
-                },
-                1
-        );
+            //this.logger = before;
+        }, 1);
 
         this.getScheduler().runLater(this::afterLoad, 2);
 
         if (this.isSupportingExtensions()) {
-            this.getExtensionLoader().loadExtensions();
-
-            if (!this.getExtensionLoader().getLoadedExtensions().isEmpty()) {
-                List<String> loadedExtensions = this.getExtensionLoader().getLoadedExtensions().stream().map(
-                        extension -> extension.getName() + " v" + extension.getVersion()
-                ).toList();
-
-                this.getLogger().info(
-                        "Loaded extensions: " +
-                                String.join(", ", loadedExtensions)
-                );
+            for (Extension extension : this.getExtensionLoader().getLoadedExtensions()) {
+                extension.enable();
             }
+        }
+
+        if (!Prices.allLoadedFactories().isEmpty()) {
+            this.getLogger().info(
+                    "Loaded price factories (" + Prices.allLoadedFactories().size() + "): "
+                            + String.join(", ", Prices.allLoadedFactories())
+            );
         }
 
         this.handleLifecycle(this.onEnable, this::handleEnable);
@@ -537,6 +534,21 @@ public abstract class EcoPlugin extends JavaPlugin implements PluginLike, Regist
     @Override
     public final void onLoad() {
         super.onLoad();
+
+        if (this.isSupportingExtensions()) {
+            this.getExtensionLoader().loadExtensions();
+            if (!this.getExtensionLoader().getLoadedExtensions().isEmpty()) {
+                List<String> loadedExtensions = this.getExtensionLoader().getLoadedExtensions().stream().map(
+                        extension -> extension.getName() + " v" + extension.getVersion()
+                ).toList();
+
+                this.getLogger().info(
+                        "Loaded extensions: " +
+                                String.join(", ", loadedExtensions)
+                );
+            }
+
+        }
 
         this.handleLifecycle(this.onLoad, this::handleLoad);
     }
@@ -697,9 +709,19 @@ public abstract class EcoPlugin extends JavaPlugin implements PluginLike, Regist
      * @return The time.
      */
     public final long reloadWithTime() {
+        return reloadWithTime(true);
+    }
+
+    /**
+     * Reload the plugin and return the time taken to reload.
+     *
+     * @param cancelTasks If tasks should be cancelled.
+     * @return The time.
+     */
+    public final long reloadWithTime(final boolean cancelTasks) {
         long startTime = System.currentTimeMillis();
 
-        this.reload();
+        this.reload(cancelTasks);
 
         return System.currentTimeMillis() - startTime;
     }
@@ -895,7 +917,7 @@ public abstract class EcoPlugin extends JavaPlugin implements PluginLike, Regist
     @Nullable
     @Deprecated(since = "6.72.0")
     protected DisplayModule createDisplayModule() {
-        Validate.isTrue(this.getDisplayModule() == null, "Display module exists!");
+        Preconditions.checkArgument(this.getDisplayModule() == null, "Display module exists!");
 
         return null;
     }
@@ -939,7 +961,7 @@ public abstract class EcoPlugin extends JavaPlugin implements PluginLike, Regist
      * @return The proxy.
      */
     public final <T> T getProxy(@NotNull final Class<T> proxyClass) {
-        Validate.notNull(proxyFactory, "Plugin does not support proxies!");
+        Preconditions.checkNotNull(proxyFactory, "Plugin does not support proxies!");
 
         return proxyFactory.getProxy(proxyClass);
     }
@@ -1046,6 +1068,17 @@ public abstract class EcoPlugin extends JavaPlugin implements PluginLike, Regist
      */
     public int getBStatsId() {
         return this.getProps().getBStatsId();
+    }
+
+    /**
+     * Get custom bStats charts to submit alongside standard metrics.
+     * Override to add plugin-specific charts.
+     *
+     * @return The charts.
+     */
+    @NotNull
+    public List<EcoMetricsChart> getCustomCharts() {
+        return Collections.emptyList();
     }
 
     /**

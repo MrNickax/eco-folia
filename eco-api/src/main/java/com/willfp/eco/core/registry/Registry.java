@@ -1,15 +1,10 @@
 package com.willfp.eco.core.registry;
 
-import org.apache.commons.lang.Validate;
+import com.google.common.base.Preconditions;
+import java.util.*;
+import java.util.regex.Pattern;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * A registry for {@link Registrable}s.
@@ -31,6 +26,12 @@ public class Registry<T extends Registrable> implements Iterable<T> {
      * If the registry is locked.
      */
     private boolean isLocked = false;
+
+    /**
+     * Cached values set, invalidated on mutation.
+     */
+    @Nullable
+    private Set<T> cachedValues = null;
 
     /**
      * The locker, used to 'secure' registries and prevent random unlocking.
@@ -57,9 +58,10 @@ public class Registry<T extends Registrable> implements Iterable<T> {
             throw new IllegalStateException("Cannot add to locked registry! (ID: " + element.getID() + ")");
         }
 
-        Validate.isTrue(ID_PATTERN.matcher(element.getID()).matches(), "ID must match pattern: " + ID_PATTERN.pattern() + " (was " + element.getID() + ")");
+        Preconditions.checkArgument(ID_PATTERN.matcher(element.getID()).matches(), "ID must match pattern: " + ID_PATTERN.pattern() + " (was " + element.getID() + ")");
 
         registry.put(element.getID(), element);
+        this.cachedValues = null;
 
         element.onRegister();
         onRegister(element);
@@ -82,6 +84,7 @@ public class Registry<T extends Registrable> implements Iterable<T> {
         onRemove(element);
 
         registry.remove(element.getID());
+        this.cachedValues = null;
 
         return element;
     }
@@ -133,7 +136,12 @@ public class Registry<T extends Registrable> implements Iterable<T> {
      * @return All elements.
      */
     public Set<T> values() {
-        return Set.copyOf(registry.values());
+        Set<T> cached = this.cachedValues;
+        if (cached == null) {
+            cached = Set.copyOf(registry.values());
+            this.cachedValues = cached;
+        }
+        return cached;
     }
 
     /**

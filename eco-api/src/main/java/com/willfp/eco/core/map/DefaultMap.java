@@ -1,13 +1,12 @@
 package com.willfp.eco.core.map;
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * A map with a default value.
@@ -72,23 +71,14 @@ public class DefaultMap<K, V> implements Map<K, V> {
     @SuppressWarnings("unchecked")
     public V get(@Nullable final Object key) {
         if (key == null) {
-            V value = defaultValue.get();
-            if (value == null) {
-                throw new IllegalStateException("Default value supplier returned null for null key");
-            }
-            return value;
+            return defaultValue.get();
         }
 
-        V value = map.get(key);
-        if (value == null) {
-            value = defaultValue.get();
-            if (value == null) {
-                throw new IllegalStateException("Default value supplier returned null for key: " + key);
-            }
-            map.put((K) key, value);
+        if (map.get(key) == null) {
+            map.put((K) key, defaultValue.get());
         }
 
-        return value;
+        return map.get(key);
     }
 
     @Override

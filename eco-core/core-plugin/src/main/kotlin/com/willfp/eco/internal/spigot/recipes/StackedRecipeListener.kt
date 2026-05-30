@@ -3,22 +3,19 @@ package com.willfp.eco.internal.spigot.recipes
 import com.willfp.eco.core.EcoPlugin
 import com.willfp.eco.core.items.TestableItem
 import com.willfp.eco.core.items.isEcoEmpty
-import com.willfp.eco.core.placeholder.context.placeholderContext
 import com.willfp.eco.core.recipe.Recipes
 import com.willfp.eco.core.recipe.parts.GroupedTestableItems
 import com.willfp.eco.core.recipe.parts.TestableStack
 import com.willfp.eco.core.recipe.recipes.CraftingRecipe
+import kotlin.math.max
+import kotlin.math.min
 import org.bukkit.Material
-import org.bukkit.entity.Entity
-import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.inventory.CraftingInventory
 import org.bukkit.inventory.ItemStack
-import kotlin.math.max
-import kotlin.math.min
 
 class StackedRecipeListener(
     private val plugin: EcoPlugin
@@ -114,7 +111,7 @@ class StackedRecipeListener(
             // Everything has to be cloned because the inventory changes the item
             inventory.matrix[i] = item.clone() // Use un-cloned version first
             // This isn't even funny anymore
-            runTwice (event.whoClicked) {
+            runTwice {
                 val newItem = item.clone()
                 // Just use every method possible to set the item
                 inventory.matrix[i] = newItem
@@ -137,13 +134,9 @@ class StackedRecipeListener(
         inventory.result = existingResult
     }
 
-    private fun runTwice(source: Entity, block: () -> Unit) {
+    private fun runTwice(block: () -> Unit) {
         block()
-        source.scheduler.run(
-            plugin,
-            { block() },
-            {}
-        )
+        plugin.scheduler.run(block)
     }
 
     companion object {

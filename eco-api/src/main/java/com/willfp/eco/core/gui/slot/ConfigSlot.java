@@ -1,23 +1,16 @@
 package com.willfp.eco.core.gui.slot;
 
-import com.willfp.eco.core.EcoPlugin;
-
 import com.willfp.eco.core.config.interfaces.Config;
 import com.willfp.eco.core.fast.FastItemStack;
 import com.willfp.eco.core.gui.slot.functional.SlotHandler;
 import com.willfp.eco.core.items.Items;
 import com.willfp.eco.util.StringUtils;
+import java.util.*;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 /**
  * A slot loaded in from config.
@@ -117,7 +110,7 @@ public class ConfigSlot extends CustomSlot {
      * Signifies a command to dispatch.
      *
      * @param command The command.
-     * @param console If the command should be run as a console.
+     * @param console If the command should be run as console.
      */
     private record CommandToDispatch(
             @NotNull String command,
@@ -129,26 +122,15 @@ public class ConfigSlot extends CustomSlot {
          * @param player The player.
          */
         void dispatch(@NotNull final Player player) {
-            String commandToRun = command().replace("%player%", player.getName());
-
             if (console()) {
-                // Schedule command to run on the global region (Folia-safe)
-                Bukkit.getGlobalRegionScheduler().run(
-                        EcoPlugin.getPlugin(EcoPlugin.class),
-                        (task) -> Bukkit.dispatchCommand(
-                                Bukkit.getConsoleSender(),
-                                commandToRun
-                        )
+                Bukkit.dispatchCommand(
+                        Bukkit.getConsoleSender(),
+                        command().replace("%player%", player.getName())
                 );
             } else {
-                // Schedule command to run on the player's entity scheduler (Folia-safe)
-                player.getScheduler().run(
-                        EcoPlugin.getPlugin(EcoPlugin.class),
-                        (task) -> Bukkit.dispatchCommand(
-                                player,
-                                commandToRun
-                        ),
-                        null
+                Bukkit.dispatchCommand(
+                        player,
+                        command().replace("%player%", player.getName())
                 );
             }
         }

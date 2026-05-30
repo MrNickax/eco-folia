@@ -2,7 +2,6 @@ package com.willfp.eco.internal.spigot.data
 
 import com.willfp.eco.core.EcoPlugin
 import com.willfp.eco.util.BlockUtils
-import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.block.Block
 import org.bukkit.event.EventHandler
@@ -37,7 +36,7 @@ class PlayerBlockListener(
     fun onBreak(event: BlockBreakEvent) {
         val block = event.block
 
-        Bukkit.getRegionScheduler().run(this.plugin, block.location) {
+        this.plugin.scheduler.run {
             removeKey(block)
         }
     }
@@ -46,7 +45,7 @@ class PlayerBlockListener(
     fun onGrow(event: StructureGrowEvent) {
         val block = event.location.block
 
-        Bukkit.getRegionScheduler().run(this.plugin, block.location) {
+        this.plugin.scheduler.run {
             removeKey(block)
         }
     }
@@ -63,11 +62,11 @@ class PlayerBlockListener(
             }
         }
 
-        val first = locs.firstOrNull() ?: return
-        Bukkit.getRegionScheduler().run(plugin, first) {
+        this.plugin.scheduler.run {
             for (loc in toRemove) {
                 removeKey(loc)
             }
+
             for (loc in locs) {
                 writeKey(loc)
             }
@@ -86,11 +85,11 @@ class PlayerBlockListener(
             }
         }
 
-        val first = locs.firstOrNull() ?: return
-        Bukkit.getRegionScheduler().run(plugin, first) {
+        this.plugin.scheduler.run {
             for (loc in toRemove) {
                 removeKey(loc)
             }
+
             for (loc in locs) {
                 writeKey(loc)
             }

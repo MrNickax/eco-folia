@@ -2,8 +2,13 @@ package com.willfp.eco.internal.spigot
 
 import com.willfp.eco.core.Eco
 import com.willfp.eco.core.EcoPlugin
+import com.willfp.eco.core.bstats.EcoMetricsChart
+import com.willfp.eco.core.integrations.anticheat.AnticheatManager
+import com.willfp.eco.core.integrations.antigrief.AntigriefManager
+import com.willfp.eco.core.integrations.customitems.CustomItemsManager
 import com.willfp.eco.core.PluginLike
 import com.willfp.eco.core.PluginProps
+import com.willfp.eco.core.blocks.Blocks
 import com.willfp.eco.core.command.CommandBase
 import com.willfp.eco.core.command.PluginCommandBase
 import com.willfp.eco.core.config.ConfigType
@@ -45,9 +50,7 @@ import com.willfp.eco.internal.spigot.data.DataYml
 import com.willfp.eco.internal.spigot.data.KeyRegistry
 import com.willfp.eco.internal.spigot.data.profiles.ProfileHandler
 import com.willfp.eco.internal.spigot.integrations.bstats.MetricHandler
-import com.willfp.eco.internal.spigot.math.DelegatedExpressionHandler
-import com.willfp.eco.internal.spigot.math.ImmediatePlaceholderTranslationExpressionHandler
-import com.willfp.eco.internal.spigot.math.LazyPlaceholderTranslationExpressionHandler
+import com.willfp.eco.internal.spigot.math.ExpressionEvaluator
 import com.willfp.eco.internal.spigot.proxies.BukkitCommandsProxy
 import com.willfp.eco.internal.spigot.proxies.CommonsInitializerProxy
 import com.willfp.eco.internal.spigot.proxies.DisplayNameProxy
@@ -57,9 +60,12 @@ import com.willfp.eco.internal.spigot.proxies.ExtendedPersistentDataContainerFac
 import com.willfp.eco.internal.spigot.proxies.FastItemStackFactoryProxy
 import com.willfp.eco.internal.spigot.proxies.MiniMessageTranslatorProxy
 import com.willfp.eco.internal.spigot.proxies.PacketHandlerProxy
+import com.willfp.eco.internal.spigot.proxies.PlayerHandlerProxy
 import com.willfp.eco.internal.spigot.proxies.SNBTConverterProxy
 import com.willfp.eco.internal.spigot.proxies.SkullProxy
 import com.willfp.eco.internal.spigot.proxies.TPSProxy
+import java.net.URLClassLoader
+import java.util.UUID
 import net.kyori.adventure.text.Component
 import org.bukkit.Location
 import org.bukkit.NamespacedKey
@@ -69,10 +75,9 @@ import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Mob
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.Recipe
 import org.bukkit.inventory.meta.SkullMeta
 import org.bukkit.persistence.PersistentDataContainer
-import java.net.URLClassLoader
-import java.util.UUID
 
 private val loadedEcoPlugins = mutableMapOf<String, EcoPlugin>()
 
@@ -90,11 +95,9 @@ class EcoImpl : EcoSpigotPlugin(), Eco {
 
     private val placeholderParser = PlaceholderParser()
 
-    private val crunchHandler = DelegatedExpressionHandler(
-        this,
-        if (this.configYml.getBool("use-immediate-placeholder-translation-for-math"))
-            ImmediatePlaceholderTranslationExpressionHandler(placeholderParser)
-        else LazyPlaceholderTranslationExpressionHandler(placeholderParser),
+    private val expressionEvaluator = ExpressionEvaluator(
+        placeholderParser,
+        this.configYml.getInt("math-cache-ttl").toLong()
     )
 
     override fun createScheduler(plugin: EcoPlugin) =
@@ -248,6 +251,12 @@ class EcoImpl : EcoSpigotPlugin(), Eco {
             }
         }
 
+        for (customBlock in Blocks.getCustomBlocks()) {
+            if (customBlock.key.namespace.equals(plugin.name.lowercase(), ignoreCase = true)) {
+                Blocks.removeCustomBlock(customBlock.key)
+            }
+        }
+
         val classLoader = plugin::class.java.classLoader
 
         if (classLoader is URLClassLoader) {
@@ -326,13 +335,46 @@ class EcoImpl : EcoSpigotPlugin(), Eco {
         getProxy(TPSProxy::class.java).getTPS()
 
     override fun evaluate(expression: String, context: PlaceholderContext) =
-        crunchHandler.evaluate(expression, context)
+        expressionEvaluator.evaluate(expression, context)
 
     override fun getOpenMenu(player: Player) =
         player.renderedInventory?.menu
 
-    override fun syncCommands() =
+    override fun addBukkitRecipeNoResend(recipe: Recipe) {
+        this.getProxy(CommonsInitializerProxy::class.java).addBukkitRecipeNoResend(recipe)
+    }
+
+    override fun reloadBukkitRecipes() {
+        this.getProxy(CommonsInitializerProxy::class.java).reloadBukkitRecipes()
+    }
+
+    override fun removeBukkitRecipeNoResend(key: NamespacedKey): Boolean {
+        return this.getProxy(CommonsInitializerProxy::class.java).removeBukkitRecipeNoResend(key)
+    }
+
+    private var batchDepth = 0
+    private var syncDuringBatch = false
+
+    override fun syncCommands() {
+        if (batchDepth > 0) {
+            syncDuringBatch = true
+            return
+        }
         this.getProxy(BukkitCommandsProxy::class.java).syncCommands()
+    }
+
+    override fun beginCommandBatch() {
+        batchDepth++
+    }
+
+    override fun endCommandBatch() {
+        check(batchDepth > 0) { "endCommandBatch() called without matching beginCommandBatch()" }
+        batchDepth--
+        if (batchDepth == 0 && syncDuringBatch) {
+            syncDuringBatch = false
+            this.getProxy(BukkitCommandsProxy::class.java).syncCommands()
+        }
+    }
 
     override fun unregisterCommand(command: PluginCommandBase) =
         this.getProxy(BukkitCommandsProxy::class.java).unregisterCommand(command)
@@ -348,4 +390,34 @@ class EcoImpl : EcoSpigotPlugin(), Eco {
 
     override fun setClientsideDisplayName(entity: LivingEntity, player: Player, name: Component, visible: Boolean) =
         this.getProxy(DisplayNameProxy::class.java).setClientsideDisplayName(entity, player, name, visible)
+
+    override fun giveExpAndApplyMending(player: Player, amount: Int, applyMending: Boolean) {
+        getProxy(PlayerHandlerProxy::class.java).giveExpAndApplyMending(player, amount, applyMending)
+    }
+
+    override fun getCustomCharts() = listOf(
+        EcoMetricsChart.SimplePie("data_handler") { profileHandler.defaultHandler.id },
+        EcoMetricsChart.SingleLine("loaded_eco_plugins") {
+            loadedEcoPlugins.values.distinct().size
+        },
+        EcoMetricsChart.SingleLine("loaded_extensions") {
+            loadedEcoPlugins.values.distinct()
+                .sumOf { it.extensionLoader.getLoadedExtensions().size }
+        },
+        EcoMetricsChart.AdvancedPie("antigrief_integrations") {
+            AntigriefManager.getRegisteredIntegrations()
+                .associate { it.pluginName to 1 }
+                .ifEmpty { null }
+        },
+        EcoMetricsChart.AdvancedPie("custom_item_integrations") {
+            CustomItemsManager.getRegisteredIntegrations()
+                .associate { it.pluginName to 1 }
+                .ifEmpty { null }
+        },
+        EcoMetricsChart.AdvancedPie("anticheat_integrations") {
+            AnticheatManager.getRegisteredIntegrations()
+                .associate { it.pluginName to 1 }
+                .ifEmpty { null }
+        }
+    )
 }
