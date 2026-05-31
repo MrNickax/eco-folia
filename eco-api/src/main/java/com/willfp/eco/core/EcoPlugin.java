@@ -31,6 +31,8 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
+import com.willfp.eco.util.TeamUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -464,6 +466,8 @@ public abstract class EcoPlugin extends JavaPlugin implements PluginLike, Regist
                             + String.join(", ", Prices.allLoadedFactories())
             );
         }
+
+        TeamUtils.init(this);
 
         this.handleLifecycle(this.onEnable, this::handleEnable);
     }
