@@ -10,10 +10,13 @@ import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.ScoreboardManager;
 import org.bukkit.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+@SuppressWarnings("deprecation")
 public final class TeamUtils {
 
     private static final BiMap<ChatColor, Team> CHAT_COLOR_TEAMS = HashBiMap.create();
+    private static boolean supported = true;
 
     private TeamUtils() {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
@@ -29,6 +32,13 @@ public final class TeamUtils {
                 }
 
                 Team team = getOrCreateTeam(scoreboard, color);
+
+                if (team == null) {
+                    supported = false;
+                    CHAT_COLOR_TEAMS.clear();
+                    return;
+                }
+
                 CHAT_COLOR_TEAMS.forcePut(color, team);
             }
         });
@@ -42,16 +52,29 @@ public final class TeamUtils {
         }
 
         throw new IllegalStateException(
-                "TeamUtils has not been initialized yet, or color is not registered: " + color.name()
+                "TeamUtils has not been initialized yet, scoreboard teams are not supported, or color is not registered: "
+                        + color.name()
         );
     }
 
     public static void addEntry(@NotNull Plugin plugin, @NotNull ChatColor color, @NotNull String entry) {
-        Bukkit.getGlobalRegionScheduler().execute(plugin, () -> fromChatColor(color).addEntry(entry));
+        Bukkit.getGlobalRegionScheduler().execute(plugin, () -> {
+            if (!supported) {
+                return;
+            }
+
+            fromChatColor(color).addEntry(entry);
+        });
     }
 
     public static void removeEntry(@NotNull Plugin plugin, @NotNull ChatColor color, @NotNull String entry) {
-        Bukkit.getGlobalRegionScheduler().execute(plugin, () -> fromChatColor(color).removeEntry(entry));
+        Bukkit.getGlobalRegionScheduler().execute(plugin, () -> {
+            if (!supported) {
+                return;
+            }
+
+            fromChatColor(color).removeEntry(entry);
+        });
     }
 
     private static @NotNull Scoreboard getMainScoreboard() {
@@ -59,13 +82,17 @@ public final class TeamUtils {
         return manager.getMainScoreboard();
     }
 
-    private static @NotNull Team getOrCreateTeam(@NotNull Scoreboard scoreboard, @NotNull ChatColor color) {
+    private static @Nullable Team getOrCreateTeam(@NotNull Scoreboard scoreboard, @NotNull ChatColor color) {
         String name = "EC-" + color.name();
 
         Team team = scoreboard.getTeam(name);
 
         if (team == null) {
-            team = scoreboard.registerNewTeam(name);
+            try {
+                team = scoreboard.registerNewTeam(name);
+            } catch (UnsupportedOperationException exception) {
+                return null;
+            }
         }
 
         team.setColor(color);
