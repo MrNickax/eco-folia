@@ -7,19 +7,31 @@ package com.willfp.eco.core.map
  *
  * @see ListMap
  */
-@Suppress("RedundantOverride")
 class MutableListMap<K : Any, V> : ListMap<K, V>() {
     /**
      * Override with enforced MutableList type.
      */
-    override fun get(key: K?): MutableList<V> =
-        super.get(key)
+    override fun get(key: K?): MutableList<V> {
+        val value = super.get(key)
+
+        if (value is MutableList<V>) {
+            return value
+        }
+
+        return value.toMutableList()
+    }
 
     /**
      * Override with enforced MutableList type.
      */
     override fun getOrDefault(key: K, defaultValue: MutableList<V>): MutableList<V> {
-        return super.getOrDefault(key, defaultValue)
+        val value = super.getOrDefault(key, defaultValue)
+
+        if (value is MutableList<V>) {
+            return value
+        }
+
+        return value.toMutableList()
     }
 }
 

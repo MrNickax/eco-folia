@@ -1,6 +1,7 @@
 package com.willfp.eco.core.map;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.jetbrains.annotations.NotNull;
 
@@ -15,7 +16,7 @@ public class ListMap<K, V> extends DefaultMap<K, List<V>> {
      * Create a new list map.
      */
     public ListMap() {
-        super(ArrayList::new);
+        super(() -> Collections.synchronizedList(new ArrayList<>()));
     }
 
     /**

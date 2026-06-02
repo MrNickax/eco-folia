@@ -44,36 +44,35 @@ public final class TeamUtils {
         });
     }
 
-    public static @NotNull Team fromChatColor(@NotNull ChatColor color) {
-        Team team = CHAT_COLOR_TEAMS.get(color);
-
-        if (team != null) {
-            return team;
+    public static @Nullable Team fromChatColor(@NotNull ChatColor color) {
+        if (supported) {
+            return CHAT_COLOR_TEAMS.get(color);
         }
 
-        throw new IllegalStateException(
-                "TeamUtils has not been initialized yet, scoreboard teams are not supported, or color is not registered: "
-                        + color.name()
-        );
+        return null;
     }
 
     public static void addEntry(@NotNull Plugin plugin, @NotNull ChatColor color, @NotNull String entry) {
         Bukkit.getGlobalRegionScheduler().execute(plugin, () -> {
-            if (!supported) {
+            Team team = fromChatColor(color);
+
+            if (team == null) {
                 return;
             }
 
-            fromChatColor(color).addEntry(entry);
+            team.addEntry(entry);
         });
     }
 
     public static void removeEntry(@NotNull Plugin plugin, @NotNull ChatColor color, @NotNull String entry) {
         Bukkit.getGlobalRegionScheduler().execute(plugin, () -> {
-            if (!supported) {
+            Team team = fromChatColor(color);
+
+            if (team == null) {
                 return;
             }
 
-            fromChatColor(color).removeEntry(entry);
+            team.removeEntry(entry);
         });
     }
 
@@ -95,7 +94,12 @@ public final class TeamUtils {
             }
         }
 
-        team.setColor(color);
+        try {
+            team.setColor(color);
+        } catch (UnsupportedOperationException exception) {
+            return null;
+        }
+
         return team;
     }
 }

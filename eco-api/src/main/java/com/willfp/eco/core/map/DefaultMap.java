@@ -1,9 +1,9 @@
 package com.willfp.eco.core.map;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -40,7 +40,7 @@ public class DefaultMap<K, V> implements Map<K, V> {
      * @param defaultValue The default value.
      */
     public DefaultMap(@NotNull final Supplier<V> defaultValue) {
-        this(new HashMap<>(), defaultValue);
+        this(new ConcurrentHashMap<>(), defaultValue);
     }
 
     /**
@@ -74,11 +74,7 @@ public class DefaultMap<K, V> implements Map<K, V> {
             return defaultValue.get();
         }
 
-        if (map.get(key) == null) {
-            map.put((K) key, defaultValue.get());
-        }
-
-        return map.get(key);
+        return map.computeIfAbsent((K) key, ignored -> defaultValue.get());
     }
 
     @Override
@@ -103,17 +99,24 @@ public class DefaultMap<K, V> implements Map<K, V> {
 
     @Override
     public V put(@NotNull final K key, @Nullable final V value) {
+        if (value == null) {
+            return map.remove(key);
+        }
+
         return map.put(key, value);
     }
 
     @Override
+    @Nullable
     public V remove(@NotNull final Object key) {
         return map.remove(key);
     }
 
     @Override
     public void putAll(@NotNull final Map<? extends K, ? extends V> m) {
-        map.putAll(m);
+        for (Entry<? extends K, ? extends V> entry : m.entrySet()) {
+            this.put(entry.getKey(), entry.getValue());
+        }
     }
 
     @Override
@@ -149,7 +152,7 @@ public class DefaultMap<K, V> implements Map<K, V> {
      */
     @NotNull
     public static <K, K1, V> DefaultMap<K, Map<K1, V>> createNestedMap() {
-        return new DefaultMap<>(HashMap::new);
+        return new DefaultMap<>(ConcurrentHashMap::new);
     }
 
     /**
