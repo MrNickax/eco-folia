@@ -7,11 +7,12 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
+import java.util.concurrent.ConcurrentHashMap
 
 class EntityDeathByEntityListeners(
     private val plugin: EcoPlugin
 ) : Listener {
-    private val events = mutableSetOf<EntityDeathByEntityBuilder>()
+    private val events = ConcurrentHashMap.newKeySet<EntityDeathByEntityBuilder>()
 
     @EventHandler(priority = EventPriority.HIGH)
     fun onEntityDamage(event: EntityDamageByEntityEvent) {
@@ -42,17 +43,7 @@ class EntityDeathByEntityListeners(
         val drops = event.drops
         val xp = event.droppedExp
 
-        var builtEvent: EntityDeathByEntityBuilder? = null
-
-        for (builder in events) {
-            if (builder.victim == victim) {
-                builtEvent = builder
-            }
-        }
-
-        if (builtEvent == null) {
-            return
-        }
+        val builtEvent = events.firstOrNull { it.victim == victim } ?: return
 
         events.remove(builtEvent)
         builtEvent.drops = drops

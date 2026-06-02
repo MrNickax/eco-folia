@@ -7,6 +7,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.ExpBottleEvent
 import org.bukkit.event.player.PlayerExpChangeEvent
+import java.util.concurrent.ConcurrentHashMap
 
 class NaturalExpGainListenersPaper : Listener {
     @EventHandler
@@ -23,31 +24,28 @@ class NaturalExpGainListenersPaper : Listener {
 }
 
 class NaturalExpGainListenersSpigot : Listener {
-    private val events: MutableSet<NaturalExpGainBuilder> = HashSet()
+    private val events = ConcurrentHashMap.newKeySet<NaturalExpGainBuilder>()
 
     @EventHandler
     fun playerChange(event: PlayerExpChangeEvent) {
-        val builder = NaturalExpGainBuilder(NaturalExpGainBuilder.BuildReason.PLAYER)
-        builder.event = event
-        var toRemove: NaturalExpGainBuilder? = null
-        for (searchBuilder in events) {
-            if (searchBuilder.location!!.world != event.player.location.world) {
-                continue
+        val removed = events.removeIf { searchBuilder ->
+            val location = searchBuilder.location ?: return@removeIf false
+
+            if (location.world != event.player.location.world) {
+                return@removeIf false
             }
-            if (searchBuilder.reason == NaturalExpGainBuilder.BuildReason.BOTTLE && searchBuilder.location!!.distanceSquared(
-                    event.player.location
-                ) > 52
-            ) {
-                toRemove = searchBuilder
-            }
+
+            searchBuilder.reason == NaturalExpGainBuilder.BuildReason.BOTTLE &&
+                    location.distanceSquared(event.player.location) <= 52
         }
-        if (toRemove != null) {
-            events.remove(toRemove)
+
+        if (removed) {
             return
         }
+
+        val builder = NaturalExpGainBuilder(NaturalExpGainBuilder.BuildReason.PLAYER)
         builder.event = event
         builder.push()
-        events.remove(builder)
     }
 
     @EventHandler
