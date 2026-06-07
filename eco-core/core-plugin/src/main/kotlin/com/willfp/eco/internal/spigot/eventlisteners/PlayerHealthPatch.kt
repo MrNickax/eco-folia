@@ -20,13 +20,22 @@ object PlayerHealthPatch: Listener {
     @EventHandler
     fun handlePlayerJoin(event: PlayerJoinEvent) {
         if (Eco.get().ecoPlugin.configYml.getBool("enable-health-fix")) {
-            Eco.get().ecoPlugin.scheduler.runLater(5L) {
-                if (!event.player.isDead) {
-                    event.player.health = min(event.player.savedHealth,
-                        event.player.getAttribute(Attribute.MAX_HEALTH)?.value
-                            ?: 20.0)
-                }
-            }
+            val player = event.player
+            val plugin = Eco.get().ecoPlugin
+
+            player.scheduler.runDelayed(
+                plugin,
+                {
+                    if (player.isOnline && !player.isDead) {
+                        player.health = min(
+                            player.savedHealth,
+                            player.getAttribute(Attribute.MAX_HEALTH)?.value ?: 20.0
+                        )
+                    }
+                },
+                {},
+                5L
+            )
         }
     }
 }
