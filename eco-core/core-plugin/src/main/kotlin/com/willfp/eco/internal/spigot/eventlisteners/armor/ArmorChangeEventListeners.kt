@@ -12,22 +12,33 @@ import org.bukkit.event.block.BlockDispenseArmorEvent
 class ArmorChangeEventListeners(
     private val plugin: EcoPlugin
 ) : Listener {
+
     @EventHandler
     fun onArmorChange(event: ArmorEquipEvent) {
         val player = event.player
         val before = player.inventory.armorContents.toMutableList()
-        plugin.scheduler.run {
-            val after = player.inventory.armorContents.toMutableList()
-            val armorChangeEvent = ArmorChangeEvent(player, before, after)
-            Bukkit.getPluginManager().callEvent(armorChangeEvent)
-        }
+
+        player.scheduler.run(
+            plugin,
+            { _ ->
+                val after = player.inventory.armorContents.toMutableList()
+
+                Bukkit.getPluginManager().callEvent(
+                    ArmorChangeEvent(player, before, after)
+                )
+            },
+            null
+        )
     }
 
     @EventHandler
     fun dispenseArmorEvent(event: BlockDispenseArmorEvent) {
         val type = ArmorType.matchType(event.item)
+
         if (type != null && event.targetEntity is Player) {
-            Bukkit.getPluginManager().callEvent(ArmorEquipEvent(event.targetEntity as Player))
+            Bukkit.getPluginManager().callEvent(
+                ArmorEquipEvent(event.targetEntity as Player)
+            )
         }
     }
 }
