@@ -24,7 +24,6 @@ class CollatedRunnable(plugin: EcoPlugin) {
 
                 EcoFastCollatedDropQueue.COLLATED_MAP.remove(key)
             }
-            EcoFastCollatedDropQueue.COLLATED_MAP.clear()
         }, 1, 1)
     }
 }
