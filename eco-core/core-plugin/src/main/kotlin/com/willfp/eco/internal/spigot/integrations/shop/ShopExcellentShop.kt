@@ -10,12 +10,24 @@ import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.inventory.ItemStack
-import su.nightexpress.nexshop.ShopAPI
-import su.nightexpress.nexshop.api.shop.Transaction
-import su.nightexpress.nexshop.api.shop.event.ShopTransactionEvent
-import su.nightexpress.nexshop.api.shop.type.TradeType
-import su.nightexpress.nexshop.shop.virtual.impl.VirtualShop
+import su.nightexpress.excellentshop.ShopAPI
+import su.nightexpress.excellentshop.api.event.TransactionValidatedEvent
+import su.nightexpress.excellentshop.api.product.TradeType
 
+/*
+ * Rewritten for the ExcellentShop 5.x API (su.nightexpress.excellentshop.*).
+ *
+ * The 4.x API this integration originally targeted (su.nightexpress.nexshop.*) was fully
+ * replaced in 5.x:
+ *  - Prices are no longer a single settable double; a product/transaction carries a
+ *    multi-currency BalanceHolder.
+ *  - The Bukkit ShopTransactionEvent was removed; transactions now expose
+ *    TransactionPreValidateEvent / TransactionValidatedEvent / TransactionCompletedEvent.
+ *
+ * We hook TransactionValidatedEvent (fired after validation, before completion, and
+ * cancellable) to apply eco's sell multiplier. Because the payout is multi-currency, we
+ * scale every currency in each item's BalanceHolder by the same factor eco computes.
+ */
 class ShopExcellentShop : ShopIntegration {
     override fun getSellEventAdapter(): Listener {
         return ExcellentShopSellEventListeners
@@ -23,43 +35,65 @@ class ShopExcellentShop : ShopIntegration {
 
     override fun getUnitValue(itemStack: ItemStack, player: Player): Price {
         val virtualShop = ShopAPI.getVirtualShop() ?: return PriceFree()
-        val bestDeal = virtualShop.getBestProductFor(
+        val product = virtualShop.getBestProductFor(
             itemStack.clone().apply {
                 amount = 1
-            }, TradeType.SELL, player
+            }, TradeType.SELL
         ) ?: return PriceFree()
 
         return PriceEconomy(
-            bestDeal.sellPrice
+            product.getFinalSellPrice(player)
         )
     }
 
     override fun isSellable(itemStack: ItemStack, player: Player): Boolean {
         val virtualShop = ShopAPI.getVirtualShop() ?: return false
-        val bestDeal = virtualShop.getBestProductFor(
-            itemStack, TradeType.SELL, player
+        val product = virtualShop.getBestProductFor(
+            itemStack, TradeType.SELL
         ) ?: return false
-        return bestDeal.sellPrice > 0
+        return product.isSellable && product.getFinalSellPrice(player) > 0
     }
 
     object ExcellentShopSellEventListeners : Listener {
         @EventHandler
-        fun shopEventToEcoEvent(event: ShopTransactionEvent) {
-            if (event.shop !is VirtualShop) {
+        fun shopEventToEcoEvent(event: TransactionValidatedEvent) {
+            val transaction = event.transaction
+
+            if (transaction.type != TradeType.SELL) {
                 return
             }
 
-            if (event.transaction.tradeType != TradeType.SELL) {
+            val items = transaction.itemsList
+            if (items.isEmpty()) {
                 return
             }
 
-            if (event.transactionResult != Transaction.Result.SUCCESS) {
+            val player = transaction.player
+
+            // Total sell worth summed across every currency in the transaction.
+            val oldTotal = transaction.calculateWorth().balanceMap.values.sum()
+            if (oldTotal <= 0.0) {
                 return
             }
 
-            val ecoEvent = ShopSellEvent(event.player, PriceEconomy(event.transaction.price), event.transaction.product.preview.clone())
+            val previewItem = items.first().product().preview.clone()
+            val ecoEvent = ShopSellEvent(player, PriceEconomy(oldTotal), previewItem)
             Bukkit.getPluginManager().callEvent(ecoEvent)
-            event.transaction.price = ecoEvent.value.getValue(event.player) * ecoEvent.multiplier
+
+            val newTotal = ecoEvent.value.getValue(player) * ecoEvent.multiplier
+            if (newTotal == oldTotal) {
+                return
+            }
+
+            val factor = newTotal / oldTotal
+
+            // Apply eco's multiplier by scaling each item's per-currency price.
+            for (item in items) {
+                val holder = item.price()
+                for ((currency, amount) in HashMap(holder.balanceMap)) {
+                    holder.set(currency, amount * factor)
+                }
+            }
         }
     }
 
