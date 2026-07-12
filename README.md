@@ -1,27 +1,57 @@
 # eco (Folia)
 
-> ⚠️ **Versión NO oficial.** Este es un *fork* independiente de eco adaptado para dar soporte a
-> **Folia**. No está afiliado, respaldado ni mantenido por Auxilor ni por el equipo original de eco.
+> ⚠️ **Unofficial fork.** This is an independent fork of [eco](https://github.com/Auxilor/eco),
+> patched to run on **Folia**. It is not affiliated with, endorsed by, or supported by Auxilor
+> or the original eco team.
 
-## Qué es esto
+**eco** is the plugin framework that powers EcoEnchants, libreforge and many other plugins.
+This fork ports it to **Folia** (and Folia-based servers); all other functionality comes from
+the upstream project.
 
-Un fork del framework eco modificado para funcionar sobre **Folia** (y servidores basados en Folia).
-El objetivo es únicamente la compatibilidad con Folia; el resto de la funcionalidad procede del
-proyecto original.
+## Disclaimer
 
-- Proyecto original: [Auxilor/eco](https://github.com/Auxilor/eco)
+This software is provided **as is, without any warranty**. It is an unofficial adaptation
+maintained on my own, and **I take no responsibility for any bugs, crashes, data loss or damage**
+resulting from its use. Use it at your own risk, and always test in a controlled environment
+before deploying to production.
 
-## Aviso de responsabilidad
+Issues that also occur in the official version should be reported upstream — not blamed on this
+fork.
 
-Este software se ofrece **tal cual, sin ninguna garantía**. Se trata de una adaptación no oficial
-hecha por mi cuenta y **no me hago responsable de ningún error, fallo, pérdida de datos ni daño**
-derivado de su uso. Úsalo bajo tu propia responsabilidad y prueba siempre en un entorno controlado
-antes de ponerlo en producción.
+## For developers
 
-Si encuentras un problema que también existe en la versión oficial, repórtalo al proyecto original,
-no a Auxilor por cambios introducidos en este fork.
+The `com.willfp:eco` API is published to **GitHub Packages**. GitHub requires authentication with
+a `read:packages` token even for public packages, so add your credentials to
+`~/.gradle/gradle.properties` (`gpr.user` / `gpr.key`) or the `GITHUB_ACTOR` / `GITHUB_TOKEN`
+environment variables.
 
-## Licencia
+```kotlin
+repositories {
+    maven("https://maven.pkg.github.com/MrNickax/eco-folia") {
+        credentials {
+            username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
+            password = providers.gradleProperty("gpr.key").orNull ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+}
 
-eco está licenciado bajo la licencia MIT. Se conservan los términos de la licencia del proyecto
-original. Puedes leer la licencia completa en [LICENSE.md](LICENSE.md).
+dependencies {
+    compileOnly("com.willfp:eco:VERSION") // e.g. 7.6.3-folia
+}
+```
+
+## Building
+
+```bash
+git clone https://github.com/MrNickax/eco-folia
+cd eco-folia
+./gradlew build
+```
+
+The runnable plugin jar is produced in `build/libs/` and attached to each
+[release](https://github.com/MrNickax/eco-folia/releases).
+
+## Credits & license
+
+Based on [Auxilor/eco](https://github.com/Auxilor/eco), licensed under the MIT license. The
+original license terms are preserved — see [LICENSE.md](LICENSE.md).

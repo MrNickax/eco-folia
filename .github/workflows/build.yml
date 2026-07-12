@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  packages: write
+  contents: write   # create/update releases
+  packages: write   # publish to GitHub Packages
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -34,11 +34,26 @@ jobs:
       - name: Build
         run: ./gradlew build --stacktrace
 
-      # Publishes com.willfp:eco (7.6.x-folia) to GitHub Packages.
-      # Runs on pushes to the default branch / tags, never on PRs.
+      # Publishes the com.willfp:eco API artifact to GitHub Packages (for developers).
       - name: Publish to GitHub Packages
         if: github.event_name != 'pull_request'
         run: ./gradlew publish --stacktrace
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read version
+        if: github.event_name != 'pull_request'
+        id: version
+        run: echo "value=$(sed -nE 's/^version[[:space:]]*=[[:space:]]*//p' gradle.properties | head -1)" >> "$GITHUB_OUTPUT"
+
+      # Attaches ONLY the final shaded plugin jar (build/libs/eco-<version>-all.jar) to a
+      # release. The build produces many jars (api, core, nms, sources, ...); we ship one.
+      - name: Publish jar to Releases
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: v${{ steps.version.outputs.value }}
+          files: build/libs/eco-*-all.jar
+          fail_on_unmatched_files: true
