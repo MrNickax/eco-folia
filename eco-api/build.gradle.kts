@@ -31,23 +31,10 @@ publishing {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/Auxilor/eco")
+            url = uri("https://maven.pkg.github.com/MrNickax/eco-folia")
             credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
-            }
-        }
-    }
-
-    publishing {
-        repositories {
-            maven {
-                name = "Auxilor"
-                url = uri("https://repo.auxilor.io/repository/maven-releases/")
-                credentials {
-                    username = System.getenv("MAVEN_USERNAME")
-                    password = System.getenv("MAVEN_PASSWORD")
-                }
+                username = System.getenv("GITHUB_ACTOR") ?: (findProperty("gpr.user") as String?)
+                password = System.getenv("GITHUB_TOKEN") ?: (findProperty("gpr.key") as String?)
             }
         }
     }
