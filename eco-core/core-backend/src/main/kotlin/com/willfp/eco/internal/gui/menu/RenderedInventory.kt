@@ -11,8 +11,11 @@ import org.bukkit.entity.Player
 import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
-private val trackedForceRendered = mutableMapOf<UUID, RenderedInventory>()
+// Concurrent: two players in different regions opening menus in the same tick would
+// otherwise race on this map from their own region threads.
+private val trackedForceRendered = ConcurrentHashMap<UUID, RenderedInventory>()
 
 fun Player.removeForcedRenderedInventory() {
     trackedForceRendered.remove(this.uniqueId)

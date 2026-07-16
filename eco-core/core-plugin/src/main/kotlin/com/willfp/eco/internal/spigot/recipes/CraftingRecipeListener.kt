@@ -35,9 +35,9 @@ class CraftingRecipeListener(val plugin: EcoPlugin) : Listener {
         handlePrepare(event)
 
         if (plugin.configYml.getBool("enforce-preparing-recipes")) {
-            plugin.scheduler.runLater(1) {
-                handlePrepare(event)
-            }
+            // Re-reads the viewing player's crafting matrix, so it has to run on the thread
+            // that owns that player rather than on the global region scheduler.
+            event.view.player.scheduler.runDelayed(plugin, { handlePrepare(event) }, null, 1L)
         }
     }
 

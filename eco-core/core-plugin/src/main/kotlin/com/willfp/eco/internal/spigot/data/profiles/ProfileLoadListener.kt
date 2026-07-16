@@ -25,8 +25,10 @@ class ProfileLoadListener(
 
     @EventHandler
     fun onJoin(event: PlayerJoinEvent) {
-        plugin.scheduler.runLater(5) {
-            PlayerUtils.updateSavedDisplayName(event.player)
-        }
+        val player = event.player
+
+        // Reads the player's display name, so it has to run on the thread that owns them
+        // rather than on the global region scheduler.
+        player.scheduler.runDelayed(plugin, { PlayerUtils.updateSavedDisplayName(player) }, null, 5L)
     }
 }

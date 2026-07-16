@@ -141,7 +141,12 @@ class GUIListener(private val plugin: EcoPlugin) : Listener {
 
         menu.handleClose(event)
 
-        plugin.scheduler.run { MenuHandler.unregisterInventory(event.inventory) }
+        // Deferred so it runs once the close has completed, on the thread that owns the
+        // player rather than on the global region scheduler. Also runs on retirement (the
+        // player quit): RenderedInventory strongly references its own inventory, which is
+        // the weak key it's filed under, so skipping this would leak the entry forever.
+        val unregister = Runnable { MenuHandler.unregisterInventory(event.inventory) }
+        event.player.scheduler.run(plugin, { unregister.run() }, unregister)
     }
 
     @EventHandler(

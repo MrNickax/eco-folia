@@ -10,6 +10,7 @@ import com.willfp.eco.core.recipe.recipes.CraftingRecipe
 import kotlin.math.max
 import kotlin.math.min
 import org.bukkit.Material
+import org.bukkit.entity.HumanEntity
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
@@ -111,7 +112,7 @@ class StackedRecipeListener(
             // Everything has to be cloned because the inventory changes the item
             inventory.matrix[i] = item.clone() // Use un-cloned version first
             // This isn't even funny anymore
-            runTwice {
+            runTwice(event.whoClicked) {
                 val newItem = item.clone()
                 // Just use every method possible to set the item
                 inventory.matrix[i] = newItem
@@ -134,9 +135,11 @@ class StackedRecipeListener(
         inventory.result = existingResult
     }
 
-    private fun runTwice(block: () -> Unit) {
+    // The second pass mutates the clicking player's crafting inventory, so it has to run on
+    // the thread that owns that player rather than on the global region scheduler.
+    private fun runTwice(player: HumanEntity, block: () -> Unit) {
         block()
-        plugin.scheduler.run(block)
+        player.scheduler.run(plugin, { block() }, null)
     }
 
     companion object {

@@ -12,10 +12,22 @@ class MultiverseInventoriesIntegration(
 ): Listener {
     @EventHandler
     fun onWorldChange(event: WorldChangeShareHandlingEvent) {
-        val before = event.player.inventory.armorContents.toMutableList()
-        this.plugin.scheduler.run {
-            val after = event.player.inventory.armorContents.toMutableList()
-            Bukkit.getPluginManager().callEvent(ArmorChangeEvent(event.player, before, after))
-        }
+        val player = event.player
+        val before = player.inventory.armorContents.toMutableList()
+
+        // The player is mid-teleport between worlds here; their entity scheduler follows them
+        // across the move, whereas the global region scheduler would read their inventory from
+        // a thread that doesn't own them.
+        player.scheduler.run(
+            plugin,
+            { _ ->
+                val after = player.inventory.armorContents.toMutableList()
+
+                Bukkit.getPluginManager().callEvent(
+                    ArmorChangeEvent(player, before, after)
+                )
+            },
+            null
+        )
     }
 }
