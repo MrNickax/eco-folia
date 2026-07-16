@@ -5,6 +5,7 @@ import com.willfp.eco.core.fast.FastItemStack;
 import com.willfp.eco.core.integrations.guidetection.GUIDetectionManager;
 import com.willfp.eco.util.NamespacedKeyUtils;
 import java.util.*;
+import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -71,9 +72,25 @@ public final class Display {
         }
 
         ItemStack original = itemStack.clone();
-        Inventory inventory = player == null ? null : player.getOpenInventory().getTopInventory();
-        boolean inInventory = inventory != null && inventory.contains(original);
-        boolean inGui = player != null && GUIDetectionManager.hasGUIOpen(player);
+
+        boolean inInventory = false;
+        boolean inGui = false;
+
+        if (player != null) {
+            if (Bukkit.isOwnedByCurrentRegion(player)) {
+                Inventory inventory = player.getOpenInventory().getTopInventory();
+                inInventory = inventory.contains(original);
+                inGui = GUIDetectionManager.hasGUIOpen(player);
+            } else {
+                // Display is usually called on the netty thread, which doesn't own the player,
+                // so the open container can't be read from here. Use whatever the player's own
+                // thread last published, and ask it for a fresh reading.
+                inInventory = DisplaySnapshot.isInInventory(player, original);
+                inGui = DisplaySnapshot.hasGUIOpen(player);
+
+                DisplaySnapshot.requestRefresh(player);
+            }
+        }
 
         DisplayProperties properties = new DisplayProperties(
                 inInventory,
