@@ -1,5 +1,6 @@
 package com.willfp.eco.core.gui.slot;
 
+import com.willfp.eco.core.Eco;
 import com.willfp.eco.core.config.interfaces.Config;
 import com.willfp.eco.core.fast.FastItemStack;
 import com.willfp.eco.core.gui.slot.functional.SlotHandler;
@@ -123,9 +124,17 @@ public class ConfigSlot extends CustomSlot {
          */
         void dispatch(@NotNull final Player player) {
             if (console()) {
-                Bukkit.dispatchCommand(
-                        Bukkit.getConsoleSender(),
-                        command().replace("%player%", player.getName())
+                /*
+                 * This runs on the thread owning the clicking player, but console commands
+                 * must be dispatched from the global region thread. Resolve the placeholder
+                 * here, where the player is safe to read, then dispatch on the global thread.
+                 * The command runs a tick later rather than inline.
+                 */
+                String resolved = command().replace("%player%", player.getName());
+
+                Bukkit.getGlobalRegionScheduler().execute(
+                        Eco.get().getEcoPlugin(),
+                        () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), resolved)
                 );
             } else {
                 Bukkit.dispatchCommand(
