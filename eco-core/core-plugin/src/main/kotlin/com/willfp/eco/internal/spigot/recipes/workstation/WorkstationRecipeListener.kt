@@ -84,7 +84,8 @@ class WorkstationRecipeListener(private val plugin: EcoPlugin) : Listener {
             } ?: return
         event.result = recipe.output?.clone()
         WorkstationRecipes.setPendingRecipe(player.uniqueId, recipe)
-        plugin.server.scheduler.runTask(plugin, Runnable { player.updateInventory() })
+        // Folia: refreshing the player's inventory runs on the player's region.
+        player.scheduler.run(plugin, { _ -> player.updateInventory() }, null)
     }
 
     // Anvil

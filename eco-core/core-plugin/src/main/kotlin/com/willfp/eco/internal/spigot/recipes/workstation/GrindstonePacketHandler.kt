@@ -35,18 +35,19 @@ class GrindstonePacketHandler(private val plugin: EcoPlugin) : PacketListener {
 
         event.isCancelled = true
 
-        Bukkit.getScheduler().runTask(plugin, Runnable {
+        // Folia: mutating the player's open inventory runs on the player's region.
+        player.scheduler.run(plugin, { _ ->
             val topInventory = player.openInventory.topInventory
-            if (topInventory.type != InventoryType.GRINDSTONE) return@Runnable
+            if (topInventory.type != InventoryType.GRINDSTONE) return@run
 
             val current = topInventory.getItem(slotNum)
-            if (current != null && !current.type.isAir) return@Runnable
+            if (current != null && !current.type.isAir) return@run
 
             val toPlace = cursor.clone().apply { amount = 1 }
             topInventory.setItem(slotNum, toPlace)
             if (cursor.amount <= 1) player.setItemOnCursor(null)
             else cursor.amount--
             player.updateInventory()
-        })
+        }, null)
     }
 }
