@@ -12,6 +12,9 @@ import org.bukkit.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * Utilities / API methods for teams.
+ */
 @SuppressWarnings("deprecation")
 public final class TeamUtils {
 

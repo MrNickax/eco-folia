@@ -4,17 +4,12 @@ import com.willfp.eco.core.Eco;
 import com.willfp.eco.core.placeholder.AdditionalPlayer;
 import com.willfp.eco.core.placeholder.PlaceholderInjectable;
 import com.willfp.eco.core.placeholder.context.PlaceholderContext;
+import java.text.DecimalFormat;
+import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Utilities / API methods for numbers.
@@ -29,6 +24,11 @@ public final class NumberUtils {
      * Set of roman numerals to look up.
      */
     private static final TreeMap<Integer, String> NUMERALS = new TreeMap<>();
+
+    /**
+     * Epsilon.
+     */
+    private static final double EPSILON = 1e-6;
 
     static {
         NUMERALS.put(1000, "M");
@@ -132,6 +132,10 @@ public final class NumberUtils {
      */
     public static int randInt(final int min,
                               final int max) {
+        if (min == max) {
+            return min;
+        }
+
         return ThreadLocalRandom.current().nextInt(min, max + 1);
     }
 
@@ -144,7 +148,14 @@ public final class NumberUtils {
      */
     public static double randFloat(final double min,
                                    final double max) {
-        return ThreadLocalRandom.current().nextDouble(min, max);
+        if (Math.abs(min - max) < EPSILON) {
+            return min;
+        }
+
+        double tMin = Math.min(min, max);
+        double tMax = Math.max(min, max);
+
+        return ThreadLocalRandom.current().nextDouble(tMin, tMax);
     }
 
     /**
@@ -200,7 +211,7 @@ public final class NumberUtils {
         DecimalFormat df = new DecimalFormat("0.00");
         String formatted = df.format(toFormat);
 
-        return formatted.endsWith("00") ? String.valueOf((int) toFormat) : formatted;
+        return formatted.endsWith("00") ? String.valueOf((long) toFormat) : formatted;
     }
 
     /**

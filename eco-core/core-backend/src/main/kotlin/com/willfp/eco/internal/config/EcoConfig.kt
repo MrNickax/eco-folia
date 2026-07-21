@@ -6,8 +6,8 @@ import com.willfp.eco.core.placeholder.InjectablePlaceholder
 import com.willfp.eco.core.placeholder.context.PlaceholderContext
 import com.willfp.eco.internal.fast.listView
 import com.willfp.eco.util.StringUtils
-import org.bukkit.configuration.file.YamlConfiguration
 import java.util.concurrent.ConcurrentHashMap
+import org.bukkit.configuration.file.YamlConfiguration
 
 @Suppress("UNCHECKED_CAST")
 open class EcoConfig(
@@ -183,7 +183,7 @@ open class EcoConfig(
 
     override fun addInjectablePlaceholder(placeholders: Iterable<InjectablePlaceholder>) {
         for (placeholder in placeholders) {
-            injections[placeholder.pattern.pattern()] = placeholder
+            injections[placeholder.patternString] = placeholder
             injectionHash = injectionHash xor placeholder.hashCode()
         }
     }
