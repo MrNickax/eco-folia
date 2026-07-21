@@ -70,6 +70,12 @@ New files from upstream (absent in fork), use raw Bukkit scheduler (throws on Fo
 Fix: route through region scheduler at the workstation block location (Bukkit.getRegionScheduler().run(plugin, location, ...))
 or player entity scheduler for player.updateInventory. NOT a regression (feature is new).
 
-## After merge commit
-- Task 8: Folia static audit (grep BukkitRunnable/runTask reintroduced) + catalog checklist + spot-review.
-- Task 9: bump version (carry rule → 7.6.8-folia), merge to master, push, CI publishes, verify libreforge resolves.
+## ECO SYNC COMPLETE ✅ (2026-07-21)
+- Workstation Folia fix committed (157fe05c). Static audit CLEAN. build -x test + test both green.
+- Released 7.6.8-folia. Merged sync branch to master (d784ac8e). Pushed. CI green: published to
+  GitHub Packages (MrNickax/eco-folia) + release jar. Run 29853299771 success.
+
+## NEXT CYCLES (separate spec/plan, not done this session)
+- libreforge-folia: 232 behind. Bump its gradle.properties eco-version 7.6.3-folia -> 7.6.8-folia.
+  Same method: dedup analysis, sync branch, upstream base + re-apply Folia. Biggest (228 both-touched core/common).
+- EcoEnchants-folia: 120 behind. After libreforge published.
