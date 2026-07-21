@@ -142,7 +142,9 @@ class AnvilMechanicsListener(
         event.result = null
         event.inventory.setItem(2, null)
 
-        plugin.scheduler.run {
+        // Folia: the anvil inventory and the player's view belong to the player's region,
+        // so this must run on the player's entity scheduler, not the global one.
+        player.scheduler.run(plugin, {
             if (latestPreviewGeneration[player.uniqueId] != generation) return@run
 
             val left = event.inventory.getItem(0)?.clone()
@@ -194,7 +196,7 @@ class AnvilMechanicsListener(
             event.result = outItem
             event.inventory.setItem(2, outItem)
             renderedPreviewGeneration[player.uniqueId] = generation
-        }
+        }, null)
     }
 
     /**
