@@ -35,12 +35,19 @@ class CustomItemsNexo(
         NexoItems.registerUpdateCallback(
             Key.key("eco:nexo_update"),
             object : UpdateCallback {
-                override fun preUpdate(itemStack: ItemStack): ItemStack? {
-                    return null
-                }
+                override fun preUpdate(itemStack: ItemStack?): ItemStack? {
+                    val ecoArmorNamespacedKey = namespacedKeyOf("ecoarmor", "set")
+                    val ecoItemsNamespacedKey = namespacedKeyOf("ecoitems", "item")
+                    val keys = itemStack?.persistentDataContainer?.keys ?: return super.preUpdate(itemStack)
 
-                override fun postUpdate(itemStack: ItemStack): ItemStack {
-                    return itemStack
+                    if (
+                        keys.contains(ecoArmorNamespacedKey)
+                        || keys.contains(ecoItemsNamespacedKey)
+                    ) {
+                        return null
+                    }
+
+                    return super.preUpdate(itemStack)
                 }
             }
         )

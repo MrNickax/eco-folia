@@ -26,6 +26,7 @@ dependencies {
     implementation(project(path = ":eco-core:core-nms:v1_21_10", configuration = "reobf"))
     implementation(project(path = ":eco-core:core-nms:v1_21_11", configuration = "reobf"))
     implementation(project(path = ":eco-core:core-nms:v26_1_2", configuration = "shadow"))
+    implementation(project(path = ":eco-core:core-nms:v26_2", configuration = "shadow"))
 }
 
 allprojects {
@@ -215,6 +216,7 @@ tasks {
         relocate("org.intellij", "com.willfp.eco.libs.intellij")
         relocate("org.jetbrains.annotations", "com.willfp.eco.libs.jetbrains.annotations")
         relocate("com.willfp.modelenginebridge", "com.willfp.eco.libs.modelenginebridge")
+        relocate("com.github.benmanes.caffeine", "com.willfp.eco.libs.caffeine")
 
         relocate("kotlin", "com.willfp.eco.libs.kotlin") {
             exclude("kotlin.kotlin_builtins")

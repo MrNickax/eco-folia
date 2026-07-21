@@ -16,6 +16,7 @@ import com.willfp.eco.core.integrations.customitems.CustomItemsManager
 import com.willfp.eco.core.integrations.discord.DiscordManager
 import com.willfp.eco.core.integrations.economy.EconomyManager
 import com.willfp.eco.core.integrations.hologram.HologramManager
+import com.willfp.eco.internal.discord.DiscordIntegrationImpl
 import com.willfp.eco.core.integrations.mcmmo.McmmoManager
 import com.willfp.eco.core.integrations.placeholder.PlaceholderManager
 import com.willfp.eco.core.integrations.shop.ShopManager
@@ -28,7 +29,6 @@ import com.willfp.eco.internal.blocks.*
 import com.willfp.eco.internal.blocks.tags.VanillaBlockTags
 import com.willfp.eco.internal.data.MavenVersionToStringAdapter
 import com.willfp.eco.internal.data.VersionToStringAdapter
-import com.willfp.eco.internal.discord.DiscordIntegrationImpl
 import com.willfp.eco.internal.entities.*
 import com.willfp.eco.internal.entities.tags.VanillaEntityTags
 import com.willfp.eco.internal.items.*
@@ -39,9 +39,11 @@ import com.willfp.eco.internal.particle.ParticleFactoryRGB
 import com.willfp.eco.internal.price.PriceFactoryEconomy
 import com.willfp.eco.internal.price.PriceFactoryXP
 import com.willfp.eco.internal.price.PriceFactoryXPLevels
+import com.willfp.eco.internal.spigot.anvil.AnvilMechanicsListener
 import com.willfp.eco.internal.spigot.arrows.ArrowDataListener
 import com.willfp.eco.internal.spigot.data.DataYml
 import com.willfp.eco.internal.spigot.data.PlayerBlockListener
+import com.willfp.eco.internal.spigot.dragdrop.DragAndDropShellListener
 import com.willfp.eco.internal.spigot.data.profiles.ProfileHandler
 import com.willfp.eco.internal.spigot.data.profiles.ProfileLoadListener
 import com.willfp.eco.internal.spigot.drops.CollatedRunnable
@@ -86,6 +88,9 @@ import com.willfp.eco.internal.spigot.recipes.listeners.ComplexInComplex
 import com.willfp.eco.internal.spigot.recipes.listeners.ComplexInVanilla
 import com.willfp.eco.internal.spigot.recipes.stackhandlers.ShapedCraftingRecipeStackHandler
 import com.willfp.eco.internal.spigot.recipes.stackhandlers.ShapelessCraftingRecipeStackHandler
+import com.willfp.eco.internal.spigot.recipes.workstation.BrewingPacketHandler
+import com.willfp.eco.internal.spigot.recipes.workstation.GrindstonePacketHandler
+import com.willfp.eco.internal.spigot.recipes.workstation.WorkstationRecipeListener
 import com.willfp.eco.util.ClassUtils
 import me.TechsCode.UltraEconomy.UltraEconomy
 import me.qKing12.RoyaleEconomy.MultiCurrency.MultiCurrencyHandler
@@ -101,6 +106,8 @@ abstract class EcoSpigotPlugin : EcoPlugin() {
     abstract val dataYml: DataYml
     abstract val profileHandler: ProfileHandler
     protected var bukkitAudiences: BukkitAudiences? = null
+
+    private val brewingPacketHandler = BrewingPacketHandler(this)
 
     init {
         Items.registerArgParser(ArgParserEnchantment)
@@ -194,6 +201,7 @@ abstract class EcoSpigotPlugin : EcoPlugin() {
         Entities.registerArgParser(EntityArgParserSpeed)
         Entities.registerArgParser(EntityArgParserBaby)
         Entities.registerArgParser(EntityArgParserAdult)
+        Entities.registerArgParser(EntityArgParserTamed)
         Entities.registerArgParser(EntityArgParserCharged)
         Entities.registerArgParser(EntityArgParserExplosionRadius)
         Entities.registerArgParser(EntityArgParserSilent)
@@ -445,10 +453,14 @@ abstract class EcoSpigotPlugin : EcoPlugin() {
 
     override fun loadListeners(): List<Listener> {
         val listeners = mutableListOf(
+            AnvilMechanicsListener(this),
+            DragAndDropShellListener(),
             ArmorListener(),
             EntityDeathByEntityListeners(this),
             CraftingRecipeListener(this),
             StackedRecipeListener(this),
+            WorkstationRecipeListener(this),
+            brewingPacketHandler,
             GUIListener(this),
             ArrowDataListener(this),
             ArmorChangeEventListeners(this),
@@ -472,6 +484,7 @@ abstract class EcoSpigotPlugin : EcoPlugin() {
     }
 
     override fun loadPacketListeners(): List<PacketListener> {
-        return this.getProxy(PacketHandlerProxy::class.java).getPacketListeners(this)
+        return this.getProxy(PacketHandlerProxy::class.java).getPacketListeners(this) +
+            listOf(brewingPacketHandler, GrindstonePacketHandler(this))
     }
 }
