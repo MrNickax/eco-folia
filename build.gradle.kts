@@ -145,7 +145,7 @@ allprojects {
         compileOnly("net.kyori:adventure-text-serializer-legacy:5.0.1")
 
         // Other
-        compileOnly("com.github.ben-manes.caffeine:caffeine:3.2.3")
+        implementation("com.github.ben-manes.caffeine:caffeine:3.2.3")
     }
 
     tasks.withType<JavaCompile> {
@@ -223,8 +223,7 @@ tasks {
         }
 
         /*
-        Caffeine is not shaded so that it can be accessed directly by eco plugins.
-        Also, not relocating adventure, because it's a pain in the ass, and it doesn't *seem* to be causing loader constraint violations.
+        Not relocating adventure, because it's a pain in the ass, and it doesn't *seem* to be causing loader constraint violations.
          */
     }
 }
