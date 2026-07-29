@@ -1,8 +1,8 @@
-multiple-in-craft: '&l&c! &fThis recipe requires &a%amount%&f of this item.'
+multiple-in-craft: '&#C8C1B6Cantidad necesaria: &#FFE87A%amount%'
 
 # Specify default display names for prices made through ConfiguredPrice#create
 # These will override any custom configured price display names.
 # You can use %value% and %value_commas% as placeholders.
 price-display:
   - type: example_type
-    display: "&e%value% Price"
+    display: "&#FFE87A%value%"
