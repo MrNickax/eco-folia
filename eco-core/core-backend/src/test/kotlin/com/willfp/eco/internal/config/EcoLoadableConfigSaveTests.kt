@@ -106,6 +106,19 @@ internal class EcoLoadableConfigSaveTests {
     }
 
     @Test
+    fun saveDurablyWritesAndSyncsTheDirectory() {
+        val config = createConfig()
+        config.set("value", 2)
+        AtomicFileWriter.shutdown(10, TimeUnit.SECONDS) // nothing left over from other tests
+        val before = AtomicFileWriter.directorySyncs.get()
+
+        config.saveDurably()
+
+        Assertions.assertEquals(before + 1, AtomicFileWriter.directorySyncs.get())
+        Assertions.assertEquals(2, TestConfig(plugin).getInt("value"))
+    }
+
+    @Test
     fun saveAsyncEventuallyWritesTheNewContent() {
         val config = createConfig()
         config.set("value", 2)

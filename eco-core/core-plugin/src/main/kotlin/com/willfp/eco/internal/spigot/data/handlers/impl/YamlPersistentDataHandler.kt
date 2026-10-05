@@ -1,18 +1,21 @@
 package com.willfp.eco.internal.spigot.data.handlers.impl
 
 import com.willfp.eco.core.config.interfaces.Config
+import com.willfp.eco.core.config.interfaces.LoadableConfig
+import com.willfp.eco.core.config.wrapper.LoadableConfigWrapper
 import com.willfp.eco.core.data.handlers.DataTypeSerializer
 import com.willfp.eco.core.data.handlers.PersistentDataHandler
 import com.willfp.eco.core.data.keys.PersistentDataKey
 import com.willfp.eco.core.data.keys.PersistentDataKeyType
+import com.willfp.eco.internal.config.EcoLoadableConfig
 import com.willfp.eco.internal.spigot.EcoSpigotPlugin
 import java.math.BigDecimal
 import java.util.UUID
 
 class YamlPersistentDataHandler(
-    plugin: EcoSpigotPlugin
+    private val dataYml: LoadableConfig
 ) : PersistentDataHandler("yaml") {
-    private val dataYml = plugin.dataYml
+    constructor(plugin: EcoSpigotPlugin) : this(plugin.dataYml)
 
     init {
         PersistentDataKeyType.STRING.registerSerializer(this, object : YamlSerializer<String>() {
@@ -55,18 +58,39 @@ class YamlPersistentDataHandler(
     }
 
     override fun doSave() {
-        dataYml.save()
+        // Runs off the main thread (executor or shutdown), so it can afford the durable save
+        synchronized(dataYml) {
+            dataYml.saveDurably()
+        }
     }
 
+    /*
+    Both yaml handlers (local and default) share data.yml and write from their own executors.
+    Setting a nested key creates missing sections check-then-act, so two first writes for a
+    new player could each create the section and one would replace the other. Every access
+    to data.yml from here goes through its monitor.
+     */
     private abstract inner class YamlSerializer<T: Any>: DataTypeSerializer<T>() {
         protected abstract fun read(config: Config, key: String): T?
 
         final override fun readAsync(uuid: UUID, key: PersistentDataKey<T>): T? {
-            return read(dataYml, "player.$uuid.${key.key}")
+            return synchronized(dataYml) {
+                read(dataYml, "player.$uuid.${key.key}")
+            }
         }
 
         final override fun writeAsync(uuid: UUID, key: PersistentDataKey<T>, value: T) {
-            dataYml.set("player.$uuid.${key.key}", value)
+            synchronized(dataYml) {
+                dataYml.set("player.$uuid.${key.key}", value)
+            }
         }
+    }
+}
+
+private fun LoadableConfig.saveDurably() {
+    when (this) {
+        is EcoLoadableConfig -> this.saveDurably()
+        is LoadableConfigWrapper -> this.handle.saveDurably()
+        else -> this.save()
     }
 }
