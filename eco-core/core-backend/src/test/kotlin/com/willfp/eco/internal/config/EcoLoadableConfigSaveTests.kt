@@ -8,6 +8,9 @@ import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.logging.Handler
+import java.util.logging.Level
+import java.util.logging.LogRecord
 import java.util.logging.Logger
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
@@ -17,10 +20,24 @@ internal class EcoLoadableConfigSaveTests {
     @TempDir
     lateinit var dir: File
 
+    private val records = mutableListOf<LogRecord>()
+
+    private val testLogger = Logger.getAnonymousLogger().apply {
+        useParentHandlers = false
+        addHandler(object : Handler() {
+            override fun publish(record: LogRecord) {
+                synchronized(records) { records += record }
+            }
+
+            override fun flush() = Unit
+            override fun close() = Unit
+        })
+    }
+
     private val plugin by lazy {
         object : PluginLike {
             override fun getDataFolder() = dir
-            override fun getLogger(): Logger = Logger.getLogger("EcoLoadableConfigSaveTests")
+            override fun getLogger(): Logger = testLogger
             override fun getConfigHandler() = object : ConfigHandler {
                 override fun saveAllConfigs() = Unit
                 override fun updateConfigs() = Unit
@@ -30,6 +47,8 @@ internal class EcoLoadableConfigSaveTests {
     }
 
     private val file get() = File(dir, "data.yml")
+
+    private fun tempFiles() = dir.listFiles()!!.filter { it.name.endsWith(".tmp") }
 
     private fun createConfig(contents: String = "value: 1\n"): TestConfig {
         file.writeText(contents)
@@ -67,7 +86,7 @@ internal class EcoLoadableConfigSaveTests {
         config.save()
 
         Assertions.assertEquals(2, TestConfig(plugin).getInt("value"))
-        Assertions.assertFalse(File(dir, "data.yml.tmp").exists(), "temp file must be moved into place")
+        Assertions.assertEquals(emptyList<File>(), tempFiles(), "temp file must be moved into place")
     }
 
     @Test
@@ -80,6 +99,10 @@ internal class EcoLoadableConfigSaveTests {
 
         Assertions.assertTrue(file.exists(), "a missing file must not make every later save a no-op")
         Assertions.assertEquals(2, TestConfig(plugin).getInt("value"))
+        Assertions.assertTrue(
+            synchronized(records) { records.any { it.level == Level.WARNING && it.message.contains("data.yml") } },
+            "recreating a missing file is logged as a warning"
+        )
     }
 
     @Test
@@ -119,10 +142,10 @@ internal class EcoLoadableConfigSaveTests {
         // A final synchronous save must win over any async save still queued.
         config.set("value", -1)
         config.save()
-        Thread.sleep(200)
+        AtomicFileWriter.shutdown(10, TimeUnit.SECONDS) // let queued async saves finish
 
         Assertions.assertEquals(-1, TestConfig(plugin).getInt("value"))
-        Assertions.assertFalse(File(dir, "data.yml.tmp").exists(), "temp file must be moved into place")
+        Assertions.assertEquals(emptyList<File>(), tempFiles(), "temp files must be moved into place")
     }
 
     private class TestConfig(plugin: PluginLike) : EcoLoadableConfig(

@@ -27,6 +27,7 @@ import com.willfp.eco.core.price.Prices
 import com.willfp.eco.core.recipe.Recipes
 import com.willfp.eco.internal.blocks.*
 import com.willfp.eco.internal.blocks.tags.VanillaBlockTags
+import com.willfp.eco.internal.config.AtomicFileWriter
 import com.willfp.eco.internal.data.MavenVersionToStringAdapter
 import com.willfp.eco.internal.data.VersionToStringAdapter
 import com.willfp.eco.internal.entities.*
@@ -96,6 +97,7 @@ import me.TechsCode.UltraEconomy.UltraEconomy
 import me.qKing12.RoyaleEconomy.MultiCurrency.MultiCurrencyHandler
 import net.kyori.adventure.platform.bukkit.BukkitAudiences
 import net.milkbowl.vault.economy.Economy
+import java.util.concurrent.TimeUnit
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.event.Listener
@@ -297,6 +299,12 @@ abstract class EcoSpigotPlugin : EcoPlugin() {
         val start = System.currentTimeMillis()
         profileHandler.save()
         this.logger.info("Saved player data! Took ${System.currentTimeMillis() - start}ms")
+
+        // Finish config saves still queued by saveAsync (this and every eco plugin's)
+        if (!AtomicFileWriter.shutdown(10, TimeUnit.SECONDS)) {
+            this.logger.severe("Config saves were still running after 10s and may be lost")
+        }
+
         Eco.get().adventure?.close()
     }
 

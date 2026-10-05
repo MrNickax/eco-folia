@@ -23,6 +23,8 @@ public interface LoadableConfig extends Config {
 
     /**
      * Save the config.
+     * <p>
+     * Blocks until the file is written; on the main or a region thread prefer {@link #saveAsync()}.
      *
      * @throws IOException If error in saving.
      */
@@ -30,6 +32,9 @@ public interface LoadableConfig extends Config {
 
     /**
      * Save the config asynchronously.
+     * <p>
+     * The call to use from the main or a region thread: the content is captured now and
+     * written durably on a background thread, and repeated saves of a file are coalesced.
      */
     default void saveAsync() {
         // This default implementation exists purely for backwards compatibility

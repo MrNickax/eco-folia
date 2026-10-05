@@ -23,6 +23,7 @@ open class EcoLoadableConfig(
     private val name: String = "$configName.${type.extension}"
     private var hasChanged = false
     private val header = mutableListOf<String>()
+    private val saveLock = Any()
 
     fun reloadFromFile() {
         runCatching { init(configFile) }.onFailure { it.printStackTrace() }
@@ -62,17 +63,44 @@ open class EcoLoadableConfig(
         }
 
         // Build the content before touching the file, then replace it atomically
-        AtomicFileWriter.write(configFile.toPath(), this.toPlaintext().toByteArray())
+        AtomicFileWriter.write(snapshot(), durable = false)
+    }
+
+    /**
+     * Save like [save], and also sync the directory so the save survives a power loss.
+     *
+     * Blocks on two disk syncs, so only for callers already off the main and region threads.
+     */
+    @Throws(IOException::class)
+    fun saveDurably() {
+        if (requiresChangesToSave) {
+            if (!hasChanged) { // In order to preserve comments
+                return
+            }
+        }
+
+        AtomicFileWriter.write(snapshot(), durable = true)
     }
 
     override fun saveAsync() {
-        // Snapshot now, then replace the file atomically on the background writer
-        AtomicFileWriter.writeAsync(configFile.toPath(), this.toPlaintext().toByteArray())
+        // Snapshot now, then replace the file durably on the background writer
+        AtomicFileWriter.writeAsync(snapshot())
             .whenComplete { _, error ->
                 if (error != null) {
                     plugin.logger.log(Level.SEVERE, "Could not save ${configFile.path}", error.cause ?: error)
                 }
             }
+    }
+
+    /**
+     * Build the content and take its place in the write order under one lock.
+     */
+    private fun snapshot(): AtomicFileWriter.Snapshot = synchronized(saveLock) {
+        if (!configFile.exists()) {
+            plugin.logger.warning("${configFile.path} was missing and is being recreated")
+        }
+
+        AtomicFileWriter.snapshot(configFile.toPath(), this.toPlaintext().toByteArray())
     }
 
     private fun makeHeader(contents: String) {

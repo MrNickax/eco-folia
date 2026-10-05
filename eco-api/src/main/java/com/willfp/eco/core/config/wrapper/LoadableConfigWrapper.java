@@ -35,6 +35,12 @@ public abstract class LoadableConfigWrapper extends ConfigWrapper<LoadableConfig
     }
 
     @Override
+    public void saveAsync() {
+        // Use the handle's writer instead of the default's thread-per-save
+        this.getHandle().saveAsync();
+    }
+
+    @Override
     public File getConfigFile() {
         return this.getHandle().getConfigFile();
     }
