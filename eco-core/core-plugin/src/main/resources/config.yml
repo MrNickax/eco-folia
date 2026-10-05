@@ -43,8 +43,10 @@ mysql:
 # would be committing once a second.
 save-interval: 1
 
-# How many ticks to wait between autosaves for data.yml.
-autosave-interval: 36000 # 30 minutes
+# How many ticks to wait between autosaves for data.yml. Anything above 6000
+# (5 minutes) is capped to 6000 and anything below 20 (1 second) is raised to
+# 20, so a crash never loses more than 5 minutes of yaml data.
+autosave-interval: 6000 # 5 minutes
 
 # Options to manage the conflict finder
 conflicts:
