@@ -1,5 +1,6 @@
 package com.willfp.eco.core.data.handlers;
 
+import com.willfp.eco.core.Eco;
 import com.willfp.eco.core.data.keys.PersistentDataKey;
 import com.willfp.eco.core.registry.Registrable;
 import com.willfp.eco.core.tuples.Pair;
@@ -7,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -15,6 +17,11 @@ import org.jetbrains.annotations.Nullable;
  * Handles persistent data.
  */
 public abstract class PersistentDataHandler implements Registrable {
+    /**
+     * How long {@link #shutdown()} waits for queued writes before saving anyway.
+     */
+    private static final long SHUTDOWN_TIMEOUT_SECONDS = 30;
+
     /**
      * The id.
      */
@@ -67,7 +74,14 @@ public abstract class PersistentDataHandler implements Registrable {
      * Save the data.
      */
     public final void save() {
-        executor.submit(this::doSave);
+        executor.submit(() -> {
+            try {
+                doSave();
+            } catch (Exception e) {
+                // A failed autosave would otherwise vanish inside the discarded future
+                Eco.get().getEcoPlugin().getLogger().log(Level.SEVERE, "Could not save " + id + " data", e);
+            }
+        });
     }
 
     /**
@@ -149,20 +163,43 @@ public abstract class PersistentDataHandler implements Registrable {
 
     /**
      * Save and shutdown the handler.
+     * <p>
+     * Waits up to 30 seconds for queued writes, then saves whatever has been applied.
      *
      * @throws InterruptedException If the writes could not be awaited.
      */
     public final void shutdown() throws InterruptedException {
-        doSave();
-
-        if (executor.isShutdown()) {
-            return;
+        if (!shutdown(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            Eco.get().getEcoPlugin().getLogger().severe(
+                    "Data handler " + id + " still had writes running after " + SHUTDOWN_TIMEOUT_SECONDS
+                            + "s; saved what had been applied, the rest may be lost"
+            );
         }
+    }
 
+    /**
+     * Stop accepting writes, wait for the queued ones to finish, then save.
+     * <p>
+     * Saving before the queued writes have run would persist a snapshot that misses them.
+     * Can be called again to keep waiting; each call saves.
+     *
+     * @param timeout The longest time to wait for queued writes.
+     * @param unit    The unit of the timeout.
+     * @return If every queued write had finished before the save.
+     * @throws InterruptedException If the writes could not be awaited.
+     */
+    public final boolean shutdown(final long timeout,
+                                  @NotNull final TimeUnit unit) throws InterruptedException {
         executor.shutdown();
-        while (!executor.awaitTermination(2, TimeUnit.MINUTES)) {
-            // Wait
+
+        boolean drained = false;
+        try {
+            drained = executor.awaitTermination(timeout, unit);
+        } finally {
+            doSave();
         }
+
+        return drained;
     }
 
     @Override

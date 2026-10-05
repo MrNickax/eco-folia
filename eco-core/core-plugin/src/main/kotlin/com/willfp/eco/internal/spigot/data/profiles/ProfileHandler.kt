@@ -16,6 +16,8 @@ import com.willfp.eco.internal.spigot.data.profiles.impl.EcoServerProfile
 import com.willfp.eco.internal.spigot.data.profiles.impl.serverProfileUUID
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import java.util.logging.Level
 
 const val LEGACY_MIGRATED_KEY = "legacy-data-migrated"
 
@@ -49,8 +51,17 @@ class ProfileHandler(
     }
 
     fun save() {
-        localHandler.shutdown()
-        defaultHandler.shutdown()
+        // The save timer is already cancelled; hand its pending values over before draining
+        profileWriter.flush()
+
+        // One handler failing must not stop the other from saving
+        for (dataHandler in listOf(localHandler, defaultHandler)) {
+            try {
+                dataHandler.shutdown()
+            } catch (e: Exception) {
+                plugin.logger.log(Level.SEVERE, "Could not save ${dataHandler.id} data", e)
+            }
+        }
     }
 
     fun migrateIfNecessary(): Boolean {
@@ -129,7 +140,10 @@ class ProfileHandler(
         }
 
         plugin.logger.info("Profile writes submitted! Waiting for completion...")
-        toHandler.shutdown()
+        // Migration must not give up like a normal shutdown does: wait for every write
+        while (!toHandler.shutdown(2, TimeUnit.MINUTES)) {
+            plugin.logger.info("Still waiting for profile writes to complete...")
+        }
 
         plugin.logger.info("Updating previous handler...")
         plugin.dataYml.set("previous-handler", handlerId)
