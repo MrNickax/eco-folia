@@ -118,7 +118,12 @@ public abstract class PersistentDataHandler implements Registrable {
                                 @NotNull final PersistentDataKey<T> key,
                                 @NotNull final T value) {
         DataTypeSerializer<T> serializer = key.getType().getSerializer(this);
-        executor.submit(() -> serializer.writeAsync(uuid, key, value));
+        try {
+            executor.submit(() -> serializer.writeAsync(uuid, key, value));
+        } catch (RejectedExecutionException e) {
+            // Shutting down: apply it here so the final save still picks it up
+            serializer.writeAsync(uuid, key, value);
+        }
     }
 
     /**
@@ -178,6 +183,16 @@ public abstract class PersistentDataHandler implements Registrable {
     }
 
     /**
+     * Stop queueing writes; the queued ones keep running.
+     * <p>
+     * Later writes are applied on the calling thread, so the final save still includes them.
+     * Lets several handlers stop together before {@link #shutdown(long, TimeUnit)} waits on each.
+     */
+    public final void stopAcceptingWrites() {
+        executor.shutdown();
+    }
+
+    /**
      * Stop accepting writes, wait for the queued ones to finish, then save.
      * <p>
      * Saving before the queued writes have run would persist a snapshot that misses them.
@@ -190,7 +205,7 @@ public abstract class PersistentDataHandler implements Registrable {
      */
     public final boolean shutdown(final long timeout,
                                   @NotNull final TimeUnit unit) throws InterruptedException {
-        executor.shutdown();
+        stopAcceptingWrites();
 
         boolean drained = false;
         try {

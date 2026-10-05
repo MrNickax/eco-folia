@@ -74,6 +74,19 @@ internal class PersistentDataHandlerShutdownTests {
     }
 
     @Test
+    fun aWriteAfterTheExecutorStoppedIsStillSaved() {
+        val handler = SlowHandler(writeMillis = 0)
+        val uuid = UUID.randomUUID()
+        handler.shutdown(1, TimeUnit.SECONDS) // the executor no longer accepts work
+
+        // e.g. a ProfileWriter flush racing the shutdown
+        handler.write(uuid, key, "late")
+        handler.shutdown(1, TimeUnit.SECONDS)
+
+        Assertions.assertEquals("late", handler.saved?.get(uuid), "a late write reaches the final save")
+    }
+
+    @Test
     fun shutdownTwiceSavesAgainWithoutFailing() {
         val handler = SlowHandler(writeMillis = 0)
 

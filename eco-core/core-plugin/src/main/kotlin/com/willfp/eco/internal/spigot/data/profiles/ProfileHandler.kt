@@ -1,5 +1,6 @@
 package com.willfp.eco.internal.spigot.data.profiles
 
+import com.willfp.eco.core.data.handlers.PersistentDataHandler
 import com.willfp.eco.internal.spigot.EcoSpigotPlugin
 import com.willfp.eco.internal.spigot.ServerLocking
 import com.willfp.eco.internal.spigot.data.KeyRegistry
@@ -18,6 +19,7 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.logging.Level
+import java.util.logging.Logger
 
 const val LEGACY_MIGRATED_KEY = "legacy-data-migrated"
 
@@ -54,14 +56,7 @@ class ProfileHandler(
         // The save timer is already cancelled; hand its pending values over before draining
         profileWriter.flush()
 
-        // One handler failing must not stop the other from saving
-        for (dataHandler in listOf(localHandler, defaultHandler)) {
-            try {
-                dataHandler.shutdown()
-            } catch (e: Exception) {
-                plugin.logger.log(Level.SEVERE, "Could not save ${dataHandler.id} data", e)
-            }
-        }
+        shutdownDataHandlers(listOf(localHandler, defaultHandler), 30, TimeUnit.SECONDS, plugin.logger)
     }
 
     fun migrateIfNecessary(): Boolean {
@@ -151,5 +146,31 @@ class ProfileHandler(
         plugin.logger.info("The server will now automatically be restarted...")
 
         plugin.server.shutdown()
+    }
+}
+
+/**
+ * Drain and save every handler within one shared [timeout], isolating failures.
+ */
+internal fun shutdownDataHandlers(
+    handlers: List<PersistentDataHandler>,
+    timeout: Long,
+    unit: TimeUnit,
+    logger: Logger
+) {
+    // Stop them all first so they drain in parallel, then wait against a single deadline
+    handlers.forEach { it.stopAcceptingWrites() }
+    val deadline = System.nanoTime() + unit.toNanos(timeout)
+
+    // One handler failing must not stop the other from saving
+    for (dataHandler in handlers) {
+        try {
+            val remaining = (deadline - System.nanoTime()).coerceAtLeast(0)
+            if (!dataHandler.shutdown(remaining, TimeUnit.NANOSECONDS)) {
+                logger.severe("Data handler ${dataHandler.id} still had writes running; saved what had been applied")
+            }
+        } catch (e: Exception) {
+            logger.log(Level.SEVERE, "Could not save ${dataHandler.id} data", e)
+        }
     }
 }
