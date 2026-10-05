@@ -9,10 +9,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStreamReader
 import java.io.Reader
-import java.nio.ByteBuffer
-import java.nio.channels.AsynchronousFileChannel
-import java.nio.file.Files
-import java.nio.file.StandardOpenOption
+import java.util.logging.Level
 
 open class EcoLoadableConfig(
     type: ConfigType,
@@ -64,38 +61,18 @@ open class EcoLoadableConfig(
             }
         }
 
-        if (configFile.delete()) {
-            Files.write(
-                configFile.toPath(),
-                this.toPlaintext().toByteArray(),
-                StandardOpenOption.CREATE,
-                StandardOpenOption.WRITE
-            )
-        }
+        // Build the content before touching the file, then replace it atomically
+        AtomicFileWriter.write(configFile.toPath(), this.toPlaintext().toByteArray())
     }
 
     override fun saveAsync() {
-        // Save asynchronously using NIO
-        val channel = AsynchronousFileChannel.open(
-            configFile.toPath(),
-            StandardOpenOption.WRITE,
-            StandardOpenOption.CREATE,
-            StandardOpenOption.TRUNCATE_EXISTING
-        )
-        channel.write(
-            ByteBuffer.wrap(this.toPlaintext().toByteArray()),
-            0,
-            channel,
-            object : java.nio.channels.CompletionHandler<Int, AsynchronousFileChannel> {
-                override fun completed(result: Int, attachment: AsynchronousFileChannel) {
-                    attachment.close()
-                }
-
-                override fun failed(exc: Throwable, attachment: AsynchronousFileChannel) {
-                    attachment.close()
+        // Snapshot now, then replace the file atomically on the background writer
+        AtomicFileWriter.writeAsync(configFile.toPath(), this.toPlaintext().toByteArray())
+            .whenComplete { _, error ->
+                if (error != null) {
+                    plugin.logger.log(Level.SEVERE, "Could not save ${configFile.path}", error.cause ?: error)
                 }
             }
-        )
     }
 
     private fun makeHeader(contents: String) {
