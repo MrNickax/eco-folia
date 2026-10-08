@@ -3,9 +3,9 @@ package com.willfp.eco.internal.spigot.proxy.v26_2.packet
 import com.willfp.eco.core.display.Display
 import com.willfp.eco.core.packet.PacketEvent
 import com.willfp.eco.core.packet.PacketListener
+import com.willfp.eco.internal.spigot.proxy.v26_1_2.common.asBukkitStack
 import net.minecraft.network.protocol.game.ClientboundMerchantOffersPacket
 import net.minecraft.world.item.trading.MerchantOffers
-import org.bukkit.craftbukkit.inventory.CraftItemStack
 
 object NewItemsPacketOpenWindowMerchant : PacketListener {
     private val field = ClientboundMerchantOffersPacket::class.java
@@ -21,11 +21,11 @@ object NewItemsPacketOpenWindowMerchant : PacketListener {
         for (offer in packet.offers) {
             val new = offer.copy()
 
-            Display.display(CraftItemStack.asCraftMirror(new.baseCostA.itemStack), event.player)
+            Display.display(new.baseCostA.itemStack.asBukkitStack(), event.player)
             if (new.costB.isPresent) {
-                Display.display(CraftItemStack.asCraftMirror(new.costB.get().itemStack), event.player)
+                Display.display(new.costB.get().itemStack.asBukkitStack(), event.player)
             }
-            Display.display(CraftItemStack.asCraftMirror(new.getResult()), event.player)
+            Display.display(new.getResult().asBukkitStack(), event.player)
 
             offers += new
         }

@@ -24,6 +24,9 @@ tasks {
             "com.willfp.eco.internal.spigot.proxy.v1_21_8",
             "com.willfp.eco.internal.spigot.proxy.v1_21_10"
         )
+
+        // 1.21.10 removed MinecraftServer$RollingAverage.
+        exclude("com/willfp/eco/internal/spigot/proxy/v1_21_8/TPS*.class")
     }
 }
 
