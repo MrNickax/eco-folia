@@ -16,11 +16,14 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.event.inventory.InventoryType
+import java.util.concurrent.ConcurrentHashMap
 
 class BrewingPacketHandler(private val plugin: EcoPlugin) : PacketListener, Listener {
 
-    private val pendingBrews = mutableMapOf<Location, ScheduledTask>()
-    private val progressTasks = mutableMapOf<Location, ScheduledTask>()
+    // Folia: touched from both the player's and the brewing stand's region threads, and
+    // from whatever thread calls the public brew cancel hook.
+    private val pendingBrews = ConcurrentHashMap<Location, ScheduledTask>()
+    private val progressTasks = ConcurrentHashMap<Location, ScheduledTask>()
 
     init {
         WorkstationRecipes.registerBrewCancelHook { cancelBrew(it) }
@@ -32,7 +35,7 @@ class BrewingPacketHandler(private val plugin: EcoPlugin) : PacketListener, List
         if (!event.isShiftClick) return
         val player = event.whoClicked as? Player ?: return
         val location = event.inventory.location ?: return
-        if (location in pendingBrews) return
+        if (pendingBrews.containsKey(location)) return
         // Folia: brewing stand block state must be read on the block's owning region.
         Bukkit.getRegionScheduler().run(plugin, location) { _ ->
             val brewer = (location.block.state as? BrewingStand)?.inventory ?: return@run

@@ -2,6 +2,7 @@ package com.willfp.eco.internal.spigot.integrations.anticheat
 
 import com.willfp.eco.core.integrations.anticheat.AnticheatIntegration
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import me.frep.vulcan.api.event.VulcanFlagEvent
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -9,7 +10,8 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 
 class AnticheatVulcan : AnticheatIntegration, Listener {
-    private val exempt: MutableSet<UUID> = HashSet()
+    // Folia: exempt/unexempt and the violation event run on different region threads.
+    private val exempt: MutableSet<UUID> = ConcurrentHashMap.newKeySet()
     override fun getPluginName(): String {
         return "Vulcan"
     }

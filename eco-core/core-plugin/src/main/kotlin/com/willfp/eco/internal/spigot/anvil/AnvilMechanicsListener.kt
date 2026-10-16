@@ -26,6 +26,7 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.Damageable
 import org.bukkit.inventory.meta.EnchantmentStorageMeta
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.min
@@ -44,10 +45,10 @@ class AnvilMechanicsListener(
     private val plugin: EcoPlugin
 ) : Listener {
     /** Per-player counter bumped on every [onAnvilPrepare], used to invalidate in-flight previews. */
-    private val latestPreviewGeneration = mutableMapOf<UUID, Int>()
+    private val latestPreviewGeneration = ConcurrentHashMap<UUID, Int>()
 
     /** Per-player generation of the preview actually rendered into the result slot. */
-    private val renderedPreviewGeneration = mutableMapOf<UUID, Int>()
+    private val renderedPreviewGeneration = ConcurrentHashMap<UUID, Int>()
 
     private val anvilGuiClass: Class<*>? = try {
         Class.forName(
